@@ -1,7 +1,8 @@
-from django.db import models
 from django.contrib.auth import get_user_model
+from django.db import models
 
 User = get_user_model()
+
 
 class Ingridient(models.Model):
     name = models.CharField(
@@ -17,6 +18,7 @@ class Ingridient(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class Tag(models.Model):
     name = models.CharField(
@@ -56,6 +58,7 @@ class Recipe(models.Model):
         verbose_name='Cooking time'
     )  # PSIF allows Ints up to 32 767 m (546 hours!)
 
+
 class Follow(models.Model):
     user = models.ForeignKey(
         User,
@@ -73,6 +76,7 @@ class Follow(models.Model):
     class Meta:
         unique_together = ['user', 'author']
 
+
 class ShoppingList(models.Model):
     recipe = models.ForeignKey(
         Recipe,
@@ -86,6 +90,7 @@ class ShoppingList(models.Model):
         verbose_name='Автор',
         related_name='author'
     )
+
 
 class FavorRecipes(models.Model):
     recipes = models.ForeignKey(
