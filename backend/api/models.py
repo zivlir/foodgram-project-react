@@ -32,7 +32,11 @@ class Tag(models.Model):
 
 class Recipe(models.Model):
     name = models.CharField(max_length=200)
-    image = models.ImageField()  # Add upload_to, verb name
+    image = models.ImageField(
+        upload_to='media/',
+        blank=True, null=True,
+        verbose_name='Картинка рецепта'
+    )  # Add upload_to, verb name
     author = models.ForeignKey(
         User,
         related_name='recipes',
@@ -66,6 +70,9 @@ class Follow(models.Model):
         verbose_name='Автор'
     )
 
+    class Meta:
+        unique_together = ['user', 'author']
+
 class ShoppingList(models.Model):
     recipe = models.ForeignKey(
         Recipe,
@@ -81,15 +88,38 @@ class ShoppingList(models.Model):
     )
 
 class FavorRecipes(models.Model):
-    favorites = models.ForeignKey(
+    recipes = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        verbose_name='Любимые рецепт(ы)',  #?
-        related_name='favorite_recipes'
+        verbose_name='Любимые рецепт(ы)',
+        related_name='favorite',
+        null=True
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='favorite_author',
+        related_name='favorite',
         verbose_name='Пользователь'
     )
+
+    class Meta:
+        unique_together = ['recipes', 'author']
+
+
+class RecipeComponent(models.Model):
+    """
+    Класс, описывающий ингридиенты как часть рецепта
+    """
+    ingridient = models.ForeignKey(
+        Ingridient,
+        on_delete=models.CASCADE,
+        related_name='ingridient',
+        verbose_name='Компонент рецепта'
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='recipe',
+        verbose_name='Рецепт'
+    )
+    ingridients_amt = models.PositiveSmallIntegerField()
