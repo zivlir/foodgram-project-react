@@ -10,11 +10,11 @@ class Ingridient(models.Model):
         verbose_name='Название'
     )
     units = models.CharField(
-        max_length=200
+        max_length=16
     )
 
     class Meta:
-        verbose_name = "Ingridient"
+        verbose_name = 'Ingridient'
 
     def __str__(self):
         return self.name
@@ -30,6 +30,9 @@ class Tag(models.Model):
         verbose_name='Smh'
     )
     slug = models.SlugField(unique=True)
+
+    def __str__(self):
+        return self.slug
 
 
 class Recipe(models.Model):
@@ -47,7 +50,12 @@ class Recipe(models.Model):
     )
     ingridients = models.ManyToManyField(
         Ingridient,
-        verbose_name='Ingridients'
+        verbose_name='Ingridients',
+        through='RecipeComponent'
+    )
+    description = models.TextField(
+        max_length=255,
+        null=True
     )
     tags = models.ManyToManyField(
         Tag,
@@ -56,7 +64,15 @@ class Recipe(models.Model):
     )
     cooking_time = models.PositiveSmallIntegerField(
         verbose_name='Cooking time'
-    )  # PSIF allows Ints up to 32 767 m (546 hours!)
+    )
+    pub_date = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Дата создания'
+    )
+
+    class Meta:
+        verbose_name = 'Рецепт'
+        ordering = ('-pub_date', )
 
 
 class Follow(models.Model):
@@ -66,7 +82,7 @@ class Follow(models.Model):
         related_name='follower',
         verbose_name='Подписичник'
     )
-    author = models.ForeignKey(
+    following = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='following',
@@ -74,7 +90,7 @@ class Follow(models.Model):
     )
 
     class Meta:
-        unique_together = ['user', 'author']
+        unique_together = ['user', 'following']
 
 
 class ShoppingList(models.Model):
@@ -87,7 +103,7 @@ class ShoppingList(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        verbose_name='Автор',
+        verbose_name='Пользователь',
         related_name='author'
     )
 
@@ -96,7 +112,7 @@ class FavorRecipes(models.Model):
     recipes = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        verbose_name='Любимые рецепт(ы)',
+        verbose_name='Любимые рецепты',
         related_name='favorite',
         null=True
     )
@@ -118,13 +134,13 @@ class RecipeComponent(models.Model):
     ingridient = models.ForeignKey(
         Ingridient,
         on_delete=models.CASCADE,
-        related_name='ingridient',
+        related_name='recipe_ingridient',
         verbose_name='Компонент рецепта'
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name='recipe',
+        related_name='component_recipes',
         verbose_name='Рецепт'
     )
     ingridients_amt = models.PositiveSmallIntegerField()
