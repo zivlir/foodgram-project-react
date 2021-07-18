@@ -14,18 +14,44 @@ class UserFollowingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Follow
 
+class FavorSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = FavorRecipes
+        fiels = '__all__'
+
 class RecipeSerializer(serializers.ModelSerializer):
     tags = serializers.SlugRelatedField(
         many=True,
         read_only=True,
         slug_field='slug'
     )
-    # author = serializers.RelatedField(source='user', read_only=True)
-    # ingridients = serializers.RelatedField(source='ingridient')
+    author = AuthorSerializer(read_only=True)
+    is_favorited = serializers.SerializerMethodField('get_is_favorited')
+    is_in_shopping_cart = serializers.SerializerMethodField(
+        'get_is_in_shopping_cart'
+    )
+
 
     class Meta:
         fields = '__all__'
         model = Recipe
+
+    def get_is_in_shopping_cart(self, recipe):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            user = request.user
+            return ShoppingList.objects.filter(user=user, recipe=recipe).exists()
+        else:
+            return False
+
+    def get_is_favorited(self, recipe):
+        request = self.context.get('request')
+        if request and hasattr(request, "user"):
+            user = request.user
+            return FavorRecipes.objects.filter(user=user, following=recipe.author).exists()
+        else:
+            return False
 
 
 class IngidientSerializer(serializers.ModelSerializer):
@@ -34,11 +60,7 @@ class IngidientSerializer(serializers.ModelSerializer):
         model = Ingridient
         fields = '__all__'
 
-class FavorSerializer(serializers.ModelSerializer):
 
-    class Meta:
-        model = FavorRecipes
-        fiels = '__all__'
 
 
 class TagSerializer(serializers.ModelSerializer):
