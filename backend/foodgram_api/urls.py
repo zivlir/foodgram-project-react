@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.contrib.flatpages import views
 from django.urls import include, path
 from foodgram_api import settings
+
 # import debug_toolbar
 
 urlpatterns = [
@@ -12,8 +13,9 @@ urlpatterns = [
     # path('auth/', include('django.contrib.auth.urls')),
     path('api/', include('api.urls')),
 ]
+
 if settings.DEBUG:
     import debug_toolbar
-    urlpatterns += [
+    urlpatterns = [
         path('__debug__/', include(debug_toolbar.urls)),
     ] + urlpatterns

@@ -1,11 +1,17 @@
 from django.contrib import admin
 
-from api.models import FavorRecipes, Follow, Ingridient, Recipe, Tag, User, RecipeComponent
+from api.models import (FavorRecipes, Follow, Ingridient, Recipe,
+                        RecipeComponent, Tag, User)
+
+
+class UserAdmin(admin.ModelAdmin):
+    list_display = ('username', 'email')
 
 
 class RecipeComponentAdmin(admin.TabularInline):
     model = Recipe.ingridients.through
     extra = 2
+
 
 class RecipeAdmin(admin.ModelAdmin):
     inlines = (RecipeComponentAdmin,)
@@ -29,6 +35,7 @@ class FavorAdmin(admin.ModelAdmin):
     list_display = ('author', 'recipes')
 
 
+admin.site.register(User, UserAdmin)
 admin.site.register(Recipe, RecipeAdmin)
 admin.site.register(Tag, TagAdmin)
 admin.site.register(Ingridient, IngridientAdmin)

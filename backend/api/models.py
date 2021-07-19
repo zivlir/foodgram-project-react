@@ -1,7 +1,17 @@
-from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AbstractUser
+# from django.contrib.auth import get_user_model
 from django.db import models
 
-User = get_user_model()
+
+class User(AbstractUser):
+    email = models.EmailField(
+        verbose_name='email', unique=True
+    )
+    REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
+    USERNAME_FIELD = 'email'
+
+    def __str__(self):
+        return self.username
 
 
 class Ingridient(models.Model):
@@ -73,6 +83,9 @@ class Recipe(models.Model):
     class Meta:
         verbose_name = 'Рецепт'
         ordering = ('-pub_date', )
+
+    def __str__(self):
+        return self.name[:32]
 
 
 class Follow(models.Model):

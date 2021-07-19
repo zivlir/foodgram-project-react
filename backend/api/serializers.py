@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
-from api.models import Ingridient, Recipe, RecipeComponent, FavorRecipes, Tag, ShoppingList, User, Follow
+from api.models import (FavorRecipes, Follow, Ingridient, Recipe,
+                        RecipeComponent, ShoppingList, Tag, User)
+
 
 class AuthorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,6 +15,7 @@ class FavorSerializer(serializers.ModelSerializer):
     class Meta:
         model = FavorRecipes
         fiels = '__all__'
+
 
 class RecipeSerializer(serializers.ModelSerializer):
     tags = serializers.SlugRelatedField(
@@ -58,6 +61,7 @@ class FollowSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Follow
+        fields = '__all__'
 
 
 class IngidientSerializer(serializers.ModelSerializer):
@@ -72,6 +76,7 @@ class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = '__all__'
+
 
 class ShoppingSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(

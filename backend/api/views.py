@@ -1,25 +1,30 @@
-from rest_framework import filters, mixins, status
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, mixins, status, viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import (IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
-from rest_framework import viewsets
+
 from api.models import (FavorRecipes, Follow, Ingridient, Recipe,
                         RecipeComponent, ShoppingList, Tag, User)
-from api.serializers import RecipeSerializer, FavorSerializer, ShoppingSerializer, TagSerializer, IngidientSerializer, FollowSerializer
 from api.permissions import IsOwnerOrReadOnly
-from django_filters.rest_framework import DjangoFilterBackend
+from api.serializers import (FavorSerializer, FollowSerializer,
+                             IngidientSerializer, RecipeSerializer,
+                             ShoppingSerializer, TagSerializer)
+
 
 class GetPostViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
                      mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     pass
 
-class GetPostDelViewSet(mixins.CreateModelMixin,
+
+class GetPostDelViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
                         mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
                         viewsets.GenericViewSet):
     pass
+
 
 class RecipeViewSet(ModelViewSet):
     permission_classes = [IsOwnerOrReadOnly, ]
@@ -58,20 +63,6 @@ class ShoppingViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin,
         serializer.save(author=self.request.user, recipe=recipe)
 
 
-# class FollowViewSet(APIView):
-#     def get(self, request):
-#         obj = Follow.objects.all()
-#         serializer = FollowSerializer(obj, many=True)
-#         return Response(serializer.data)
-#
-#     def post(self, request):
-#         serializer = FollowSerializer(data=request.data)
-#         author = get_object_or_404(User, pk=self.kwargs.get('id'))
-#         if serializer.is_valid():
-#             serializer.save(user=self.request.user, author=author)
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#
 class FollowViewSet(GetPostDelViewSet):
     queryset = Follow.objects.all()
     serializer_class = FollowSerializer
