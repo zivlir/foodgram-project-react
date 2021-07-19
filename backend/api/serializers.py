@@ -17,6 +17,8 @@ class FavorSerializer(serializers.ModelSerializer):
         fiels = '__all__'
 
 
+# Всё же его необходимо разбить - создавать универсальные,
+# но монструозные сущности здесь неуместно
 class RecipeSerializer(serializers.ModelSerializer):
     tags = serializers.SlugRelatedField(
         many=True,
@@ -36,18 +38,32 @@ class RecipeSerializer(serializers.ModelSerializer):
     def get_is_in_shopping_cart(self, recipe):
         request = self.context.get('request')
         user = request.user
-        if not user.is_anonymous:
-            return ShoppingList.objects.filter(user=user, recipe=recipe).exists()
-        else:
+        if request is None or user.is_anonymous:
             return False
+        else:
+            return ShoppingList.objects.filter(
+                user=user, recipe=recipe
+            ).exists()
 
     def get_is_favorited(self, recipe):
         request = self.context.get('request')
         user = request.user
-        if not user.is_anonymous:
-            user = request.user
-            return FavorRecipes.objects.filter(author=user).exists()
+        if request is None or user.is_anonymous:
+            return False
         else:
+            return FavorRecipes.objects.filter(author=user, recipes=recipe).exists()
+
+class NewRecipeSerializer(serializers.ModelSerializer):
+    author = AuthorSerializer
+    tags = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field='slug'
+    )
+
+    def create(self, validated_data):
+        author = self.context.get('request').user
+        if author is None or author.is_anonymous:
             return False
 
 

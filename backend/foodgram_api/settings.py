@@ -80,7 +80,7 @@ DATABASES = {
         }
 }
 
-
+AUTH_USER_MODEL = 'api.User'
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -108,7 +108,6 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
 }
 
-AUTH_USER_MODEL = 'api.User'
 
 DJOSER = {
     'SEND_ACTIVATION_EMAIL': False,

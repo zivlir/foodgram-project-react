@@ -93,17 +93,17 @@ class Follow(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='follower',
-        verbose_name='Подписичник'
+        verbose_name='Подписчики'
     )
-    following = models.ForeignKey(
+    author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='following',
-        verbose_name='Автор'
+        verbose_name='Подписки'
     )
 
     class Meta:
-        unique_together = ['user', 'following']
+        unique_together = ['user', 'author']
 
 
 class ShoppingList(models.Model):

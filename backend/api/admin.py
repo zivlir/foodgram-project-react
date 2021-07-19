@@ -28,7 +28,7 @@ class IngridientAdmin(admin.ModelAdmin):
 
 
 class FollowAdmin(admin.ModelAdmin):
-    list_display = ('user', 'following')
+    list_display = ('author', 'user')
 
 
 class FavorAdmin(admin.ModelAdmin):
