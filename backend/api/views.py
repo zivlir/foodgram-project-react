@@ -1,6 +1,4 @@
-from django.db import models
-from django.shortcuts import render
-from rest_framework import filters, mixins
+from rest_framework import filters, mixins, status
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import (IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
@@ -9,10 +7,19 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework import viewsets
 from api.models import (FavorRecipes, Follow, Ingridient, Recipe,
-                        RecipeComponent, ShoppingList, Tag)
-from api.serializers import RecipeSerializer, FavorSerializer, ShoppingSerializer, TagSerializer, IngidientSerializer
+                        RecipeComponent, ShoppingList, Tag, User)
+from api.serializers import RecipeSerializer, FavorSerializer, ShoppingSerializer, TagSerializer, IngidientSerializer, FollowSerializer
 from api.permissions import IsOwnerOrReadOnly
 from django_filters.rest_framework import DjangoFilterBackend
+
+class GetPostViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
+                     mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    pass
+
+class GetPostDelViewSet(mixins.CreateModelMixin,
+                        mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
+                        viewsets.GenericViewSet):
+    pass
 
 class RecipeViewSet(ModelViewSet):
     permission_classes = [IsOwnerOrReadOnly, ]
@@ -20,54 +27,29 @@ class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     filter_backends = [DjangoFilterBackend]
-
-    # def get_queryset(self):
-    #     queryset = Recipe.objects.all()
-    #     tags = self.request.query_params.get('tags')
-    #     user = self.request.user
-    #     favor = self.request.query_params.get('is_favorited')
-    #     in_shop_cart = self.request.query_params.get('is_in_shopping_cart')
-    #     if tags is not None:
-    #         queryset = queryset.filter(tags__slug__contains=tags)
-    #     if user
-
-    # def list(self, request, *args, **kwargs):
-    #     queryset = Recipe.objects.all()
-    #     if 'tags' in kwargs:
-    #         self.queryset = queryset.filter(tags=kwargs['tags'])
-    #     if self.request.user.is_authenticated:
-    #         if 'is_favorited' in kwargs and kwargs['is_favorited'] == 1:
-    #             self.queryset = self.queryset.filter(
-    #                 favorite_recipes__author=self.request.user
-    #             )
-    #         if kwargs['is_in_shopping_cart'] == 1:
-    #             self.queryset = self.queryset.filter(
-    #                 shop_list__author=self.request.user
-    #             )
-    #     serializer = RecipeSerializer(queryset, many=True)
-    #     return Response(serializer.data)
-
-    # описать создание, получение одного рецепта, обновление и удаление
+    filterset_fields = ['author', 'tags']
 
 
-class IngredientsViewSet(ModelViewSet):
+class IngredientsViewSet(GetPostViewSet):
     queryset = Ingridient.objects.all()
     serializer_class = IngidientSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['pk', '^name']
 
 
-class FavoriteViewSet(ModelViewSet):
+class FavoriteViewSet(GetPostDelViewSet):
     queryset = FavorRecipes.objects.all()
     serializer_class = FavorSerializer
     permission_classes = [IsAuthenticated]
 
 
-class TagViewSet(ModelViewSet):
+class TagViewSet(GetPostViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
 
-class ShoppingViewSet(ModelViewSet):
+
+class ShoppingViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin,
+                      viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = ShoppingSerializer
 
@@ -75,3 +57,25 @@ class ShoppingViewSet(ModelViewSet):
         recipe = get_object_or_404(Recipe, pk=self.kwargs.get('recipe_id'))
         serializer.save(author=self.request.user, recipe=recipe)
 
+
+# class FollowViewSet(APIView):
+#     def get(self, request):
+#         obj = Follow.objects.all()
+#         serializer = FollowSerializer(obj, many=True)
+#         return Response(serializer.data)
+#
+#     def post(self, request):
+#         serializer = FollowSerializer(data=request.data)
+#         author = get_object_or_404(User, pk=self.kwargs.get('id'))
+#         if serializer.is_valid():
+#             serializer.save(user=self.request.user, author=author)
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+class FollowViewSet(GetPostDelViewSet):
+    queryset = Follow.objects.all()
+    serializer_class = FollowSerializer
+    permission_classes = [IsOwnerOrReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

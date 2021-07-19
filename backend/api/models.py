@@ -53,7 +53,7 @@ class Recipe(models.Model):
         verbose_name='Ingridients',
         through='RecipeComponent'
     )
-    description = models.TextField(
+    text = models.TextField(
         max_length=255,
         null=True
     )

@@ -8,12 +8,6 @@ class AuthorSerializer(serializers.ModelSerializer):
         fields = ('email', 'id', 'username', 'first_name', 'last_name')
 
 
-
-class UserFollowingSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Follow
-
 class FavorSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -32,26 +26,38 @@ class RecipeSerializer(serializers.ModelSerializer):
         'get_is_in_shopping_cart'
     )
 
-
     class Meta:
         fields = '__all__'
         model = Recipe
 
     def get_is_in_shopping_cart(self, recipe):
         request = self.context.get('request')
-        if request and hasattr(request, 'user'):
-            user = request.user
+        user = request.user
+        if not user.is_anonymous:
             return ShoppingList.objects.filter(user=user, recipe=recipe).exists()
         else:
             return False
 
     def get_is_favorited(self, recipe):
         request = self.context.get('request')
-        if request and hasattr(request, "user"):
+        user = request.user
+        if not user.is_anonymous:
             user = request.user
-            return FavorRecipes.objects.filter(user=user, following=recipe.author).exists()
+            return FavorRecipes.objects.filter(author=user).exists()
         else:
             return False
+
+
+class FollowSerializer(serializers.ModelSerializer):
+    results = serializers.SlugRelatedField(
+        slug_field='username',
+        read_only=True,
+        default=serializers.CurrentUserDefault()
+    )
+    recipes = RecipeSerializer()
+
+    class Meta:
+        model = Follow
 
 
 class IngidientSerializer(serializers.ModelSerializer):
@@ -59,8 +65,6 @@ class IngidientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingridient
         fields = '__all__'
-
-
 
 
 class TagSerializer(serializers.ModelSerializer):

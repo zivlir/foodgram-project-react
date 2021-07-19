@@ -132,3 +132,5 @@ dmypy.json
 .idea
 /backend/media/
 /backend/static/
+/backend/dump.json
+/backend/api/migrations/

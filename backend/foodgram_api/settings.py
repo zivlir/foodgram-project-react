@@ -143,7 +143,6 @@ REST_FRAMEWORK = {
 
 DJOSER = {
     'SEND_ACTIVATION_EMAIL': False,
-    'LOGIN_FIELD': 'User.email',
     'SEND_CONFIRMATION_EMAIL': False,
 }
 
