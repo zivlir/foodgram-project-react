@@ -17,14 +17,23 @@ class FavorSerializer(serializers.ModelSerializer):
         fiels = '__all__'
 
 
+class IngidientSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Ingridient
+        fields = '__all__'
+
+
+class TagSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Tag
+        fields = '__all__'
+
 # Всё же его необходимо разбить - создавать универсальные,
 # но монструозные сущности здесь неуместно
 class RecipeSerializer(serializers.ModelSerializer):
-    tags = serializers.SlugRelatedField(
-        many=True,
-        read_only=True,
-        slug_field='slug'
-    )
+    tags = TagSerializer(many=True, read_only=True)
     author = AuthorSerializer(read_only=True)
     is_favorited = serializers.SerializerMethodField('get_is_favorited')
     is_in_shopping_cart = serializers.SerializerMethodField(
@@ -53,18 +62,42 @@ class RecipeSerializer(serializers.ModelSerializer):
         else:
             return FavorRecipes.objects.filter(author=user, recipes=recipe).exists()
 
+
 class NewRecipeSerializer(serializers.ModelSerializer):
+    """
+    Выделили сериализатор, обрабатывающий процесс создания (и обновления)
+    рецепта
+    """
     author = AuthorSerializer
     tags = serializers.SlugRelatedField(
         many=True,
         read_only=True,
         slug_field='slug'
     )
+    ingridients = serializers.PrimaryKeyRelatedField(
+        queryset=Ingridient.objects.all()
+    )
+
+    class Meta:
+        model = Recipe
+        fields = '__all__'
 
     def create(self, validated_data):
         author = self.context.get('request').user
-        if author is None or author.is_anonymous:
-            return False
+        ingridients = validated_data.pop('ingridients')
+        tags = validated_data.pop('tags')
+        for tag in tags:
+            Tag.objects.update_or_create(tag)
+        recipe = Recipe.objects.create(author_id=author.id, **validated_data)
+        for ingridient in ingridients:
+            ingr_inst = ingridient['id']
+            amout = ingridient['amount']
+            RecipeComponent.objects.get_or_create(
+                ingridient=ingr_inst,
+                recipe=recipe,
+                ingridients_amt=amout
+            )
+        return recipe
 
 
 class FollowSerializer(serializers.ModelSerializer):
@@ -77,20 +110,6 @@ class FollowSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Follow
-        fields = '__all__'
-
-
-class IngidientSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Ingridient
-        fields = '__all__'
-
-
-class TagSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Tag
         fields = '__all__'
 
 

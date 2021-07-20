@@ -1,5 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, mixins, status, viewsets
+from rest_framework import filters, mixins, permissions, status, viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import (IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
@@ -7,12 +7,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
+from api.filters import RecipeFilter
 from api.models import (FavorRecipes, Follow, Ingridient, Recipe,
                         RecipeComponent, ShoppingList, Tag, User)
 from api.permissions import IsOwnerOrReadOnly
 from api.serializers import (FavorSerializer, FollowSerializer,
-                             IngidientSerializer, RecipeSerializer,
-                             ShoppingSerializer, TagSerializer)
+                             IngidientSerializer, NewRecipeSerializer,
+                             RecipeSerializer, ShoppingSerializer,
+                             TagSerializer)
 
 
 class GetPostViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
@@ -28,11 +30,16 @@ class GetPostDelViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
 
 class RecipeViewSet(ModelViewSet):
     permission_classes = [IsOwnerOrReadOnly, ]
-    # queryset = Recipe.objects.prefetch_related('favorite__author')
     queryset = Recipe.objects.all()
-    serializer_class = RecipeSerializer
+    # serializer_class = RecipeSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['author', 'tags']
+    filter_class = RecipeFilter
+
+    def get_serializer_class(self):
+        if self.action in ['list', 'retrieve']:
+            return RecipeSerializer
+        else:
+            return NewRecipeSerializer
 
 
 class IngredientsViewSet(GetPostViewSet):

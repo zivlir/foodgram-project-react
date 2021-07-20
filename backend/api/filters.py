@@ -1,12 +1,14 @@
+from distutils.util import strtobool
+
 import django_filters as filters
 
-from distutils.util import strtobool
 from api.models import FavorRecipes, Recipe, Tag
 
 FILTER_CHOICES = (
     (0, 'True'),
     (1, 'False'),
 )
+
 class RecipeFilter(filters.FilterSet):
     """
     Класс фильтрации контента по заданным параметрам: только избранное, либо
@@ -17,7 +19,7 @@ class RecipeFilter(filters.FilterSet):
     is_in_shopping_cart = filters.BooleanFilter(
         method='get_shop_cart'
     )
-    is_favorited = filters.ModelChoiceFilter(queryset=FavorRecipes.objects.filter(is_favorited))
+    # is_favorited = filters.ModelChoiceFilter(queryset=FavorRecipes.objects.filter())
 
     class Meta:
         model = Recipe
