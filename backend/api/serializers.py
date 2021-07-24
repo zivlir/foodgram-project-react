@@ -4,7 +4,7 @@ from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
                         RecipeComponent, ShoppingList, Tag, User)
 
 
-class AuthorSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField('get_is_subscribed')
 
     class Meta:
@@ -34,7 +34,14 @@ class IngredientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ingredient
-        fields = '__all__'
+        fields = ['id', 'name', 'units']
+
+    def to_internal_value(self, data):
+        test = Ingredient.objects.values('id').get(id=data)
+        return data
+
+    def to_representation(self, instance):
+        return instance
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -44,14 +51,27 @@ class TagSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class IngredientInRecipe(serializers.ModelSerializer):
+    id = IngredientSerializer()
+
+    class Meta:
+        model = RecipeComponent
+        fields = ['id', 'amount', ]
+
+
 # Всё же его необходимо разбить - создавать универсальные,
 # но монструозные сущности здесь неуместно
 class RecipeSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
-    author = AuthorSerializer(read_only=True)
+    author = UserSerializer(read_only=True)
     is_favorited = serializers.SerializerMethodField('get_is_favorited')
     is_in_shopping_cart = serializers.SerializerMethodField(
         'get_is_in_shopping_cart'
+    )
+    image = serializers.ImageField(
+        required=False,  # TODO: поставть True
+        allow_empty_file=False,
+        use_url=True
     )
 
     class Meta:
@@ -79,35 +99,26 @@ class RecipeSerializer(serializers.ModelSerializer):
             ).exists()
 
 
-class IngredientInRecipe(serializers.ModelSerializer):
-    id = serializers.IntegerField()
-    amount = serializers.IntegerField()
-
-    class Meta:
-        model = RecipeComponent
-        fields = ('id', 'amount')
-
 
 class NewRecipeSerializer(serializers.ModelSerializer):
     """
     Выделили сериализатор, обрабатывающий процесс создания (и обновления)
     рецепта
     """
-    author = AuthorSerializer(read_only=True)
-    tags = serializers.PrimaryKeyRelatedField(
-        queryset=Tag.objects.all(), many=True
-    )
+    tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True)
+    author = UserSerializer(read_only=True)
     ingredients = IngredientInRecipe(many=True)
 
     class Meta:
         model = Recipe
-        fields = ('id', 'name', 'text','author', 'author', 'tags', 'ingredients', 'cooking_time')
+        fields = ('id', 'name', 'text','author', 'tags', 'ingredients', 'cooking_time')
 
     def create(self, validated_data):
         author = self.context.get('request').user
-        ingredients = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
-        recipe = Recipe.objects.create(author_id=author.id, **validated_data)
+        ingredients = validated_data.pop('ingredients')
+        recipe = Recipe.objects.create(author=author, **validated_data)
+        recipe.save()
         recipe.tags.set(tags)
         for ingredient in ingredients:
             ingr_inst = Ingredient.objects.get(id=ingredient['id'])
