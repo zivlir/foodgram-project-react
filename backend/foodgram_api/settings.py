@@ -12,6 +12,9 @@ SECRET_KEY = os.getenv(
 )
 
 DEBUG = True
+DEBUG_TOOLBAR_CONFIG = {
+    "SHOW_TOOLBAR_CALLBACK": lambda request: True,
+}
 
 ALLOWED_HOSTS = ['*']  # Change to list()..
 
@@ -113,6 +116,13 @@ DJOSER = {
     'SEND_ACTIVATION_EMAIL': False,
     'LOGIN_FIELD': 'email',
     'SEND_CONFIRMATION_EMAIL': False,
+    'PERMISSIONS': {
+        'user': ['rest_framework.permissions.AllowAny'],
+        'user_list': ['rest_framework.permissions.AllowAny'],
+    },
+    'SERIALIZERS': {
+        'user': 'api.serializers.AuthorSerializer',
+    },
 }
 
 LANGUAGE_CODE = 'en-us'

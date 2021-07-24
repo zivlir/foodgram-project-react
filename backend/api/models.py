@@ -5,7 +5,7 @@ from django.db import models
 
 class User(AbstractUser):
     email = models.EmailField(
-        verbose_name='email', unique=True
+        verbose_name='email', unique=True, null=True
     )
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
     USERNAME_FIELD = 'email'
@@ -14,7 +14,7 @@ class User(AbstractUser):
         return self.username
 
 
-class Ingridient(models.Model):
+class Ingredient(models.Model):
     name = models.CharField(
         max_length=200,
         verbose_name='Название'
@@ -24,7 +24,7 @@ class Ingridient(models.Model):
     )
 
     class Meta:
-        verbose_name = 'Ingridient'
+        verbose_name = 'Ingredient'
 
     def __str__(self):
         return self.name
@@ -37,9 +37,10 @@ class Tag(models.Model):
     )
     color = models.CharField(
         max_length=200,
-        verbose_name='Smh'
+        verbose_name='Smh',
+        null=True
     )
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(unique=True, null=True)
 
     def __str__(self):
         return self.slug
@@ -58,9 +59,9 @@ class Recipe(models.Model):
         verbose_name='Пользователь',
         on_delete=models.CASCADE
     )
-    ingridients = models.ManyToManyField(
-        Ingridient,
-        verbose_name='Ingridients',
+    ingredients = models.ManyToManyField(
+        Ingredient,
+        verbose_name='Ingredients',
         through='RecipeComponent'
     )
     text = models.TextField(
@@ -144,10 +145,10 @@ class RecipeComponent(models.Model):
     """
     Класс, описывающий ингридиенты как часть рецепта
     """
-    ingridient = models.ForeignKey(
-        Ingridient,
+    ingredient = models.ForeignKey(
+        Ingredient,
         on_delete=models.CASCADE,
-        related_name='recipe_ingridient',
+        related_name='recipe_ingredient',
         verbose_name='Компонент рецепта'
     )
     recipe = models.ForeignKey(
@@ -156,4 +157,4 @@ class RecipeComponent(models.Model):
         related_name='component_recipes',
         verbose_name='Рецепт'
     )
-    ingridients_amt = models.PositiveSmallIntegerField()
+    amount = models.PositiveSmallIntegerField()

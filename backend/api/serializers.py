@@ -1,26 +1,39 @@
 from rest_framework import serializers
 
-from api.models import (FavorRecipes, Follow, Ingridient, Recipe,
+from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
                         RecipeComponent, ShoppingList, Tag, User)
 
 
 class AuthorSerializer(serializers.ModelSerializer):
+    is_subscribed = serializers.SerializerMethodField('get_is_subscribed')
+
     class Meta:
         model = User
-        fields = ('email', 'id', 'username', 'first_name', 'last_name')
+        fields = (
+            'email', 'id', 'username',
+            'first_name', 'last_name', 'is_subscribed'
+        )
+
+    def get_is_subscribed(self, author):
+        request = self.context.get('request')
+        if request is None or request.user.is_anonymous:
+            return False
+        return Follow.objects.filter(
+            user=request.user, author=author
+        ).exists()
 
 
 class FavorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FavorRecipes
-        fiels = '__all__'
+        fiels = ('id', 'name', 'image', 'cooking_time')
 
 
-class IngidientSerializer(serializers.ModelSerializer):
+class IngredientSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = Ingridient
+        model = Ingredient
         fields = '__all__'
 
 
@@ -29,6 +42,7 @@ class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = '__all__'
+
 
 # Всё же его необходимо разбить - создавать универсальные,
 # но монструозные сущности здесь неуместно
@@ -51,7 +65,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             return False
         else:
             return ShoppingList.objects.filter(
-                user=user, recipe=recipe
+                author=user, recipe=recipe
             ).exists()
 
     def get_is_favorited(self, recipe):
@@ -60,7 +74,18 @@ class RecipeSerializer(serializers.ModelSerializer):
         if request is None or user.is_anonymous:
             return False
         else:
-            return FavorRecipes.objects.filter(author=user, recipes=recipe).exists()
+            return FavorRecipes.objects.filter(
+                author=user, recipes=recipe
+            ).exists()
+
+
+class IngredientInRecipe(serializers.ModelSerializer):
+    id = serializers.IntegerField()
+    amount = serializers.IntegerField()
+
+    class Meta:
+        model = RecipeComponent
+        fields = ('id', 'amount')
 
 
 class NewRecipeSerializer(serializers.ModelSerializer):
@@ -68,34 +93,29 @@ class NewRecipeSerializer(serializers.ModelSerializer):
     Выделили сериализатор, обрабатывающий процесс создания (и обновления)
     рецепта
     """
-    author = AuthorSerializer
-    tags = serializers.SlugRelatedField(
-        many=True,
-        read_only=True,
-        slug_field='slug'
+    author = AuthorSerializer(read_only=True)
+    tags = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.all(), many=True
     )
-    ingridients = serializers.PrimaryKeyRelatedField(
-        queryset=Ingridient.objects.all()
-    )
+    ingredients = IngredientInRecipe(many=True)
 
     class Meta:
         model = Recipe
-        fields = '__all__'
+        fields = ('id', 'name', 'text','author', 'author', 'tags', 'ingredients', 'cooking_time')
 
     def create(self, validated_data):
         author = self.context.get('request').user
-        ingridients = validated_data.pop('ingridients')
+        ingredients = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
-        for tag in tags:
-            Tag.objects.update_or_create(tag)
         recipe = Recipe.objects.create(author_id=author.id, **validated_data)
-        for ingridient in ingridients:
-            ingr_inst = ingridient['id']
-            amout = ingridient['amount']
-            RecipeComponent.objects.get_or_create(
-                ingridient=ingr_inst,
+        recipe.tags.set(tags)
+        for ingredient in ingredients:
+            ingr_inst = Ingredient.objects.get(id=ingredient['id'])
+            amount = ingredient['amount']
+            RecipeComponent.objects.create(
+                ingredient=ingr_inst,
                 recipe=recipe,
-                ingridients_amt=amout
+                amount=amount
             )
         return recipe
 
@@ -106,11 +126,29 @@ class FollowSerializer(serializers.ModelSerializer):
         read_only=True,
         default=serializers.CurrentUserDefault()
     )
-    recipes = RecipeSerializer()
+    # recipes = RecipeSerializer()
 
     class Meta:
         model = Follow
         fields = '__all__'
+
+
+class ListFollowSerializer(serializers.ModelSerializer):
+    recipes = RecipeSerializer(many=True, read_only=True)
+    recipes_count = serializers.SerializerMethodField(method_name='get_rec_count')
+    is_subscribed = serializers.SerializerMethodField(method_name='get_is_subscribed')
+
+    class Meta:
+        model = User
+        fields = ('email', 'id', 'username', 'first_name', 'last_name', 'is_subscribed', 'recipes', 'recipes_count')
+
+    def get_is_subscribed(self, user):
+        rq_user = self.context.get('current_user')
+        author_follows = user.following.all()
+        if user.is_anonymous or author_follows.count() == 0:
+            return False
+        elif Follow.objects.filter(user=user, author=rq_user).exists():
+            return True
 
 
 class ShoppingSerializer(serializers.ModelSerializer):
@@ -122,3 +160,7 @@ class ShoppingSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShoppingList
         fields = '__all__'
+
+class ListFavorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User

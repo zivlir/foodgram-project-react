@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from api.models import (FavorRecipes, Follow, Ingridient, Recipe,
+from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
                         RecipeComponent, Tag, User)
 
 
@@ -9,7 +9,7 @@ class UserAdmin(admin.ModelAdmin):
 
 
 class RecipeComponentAdmin(admin.TabularInline):
-    model = Recipe.ingridients.through
+    model = Recipe.ingredients.through
     extra = 2
 
 
@@ -38,6 +38,6 @@ class FavorAdmin(admin.ModelAdmin):
 admin.site.register(User, UserAdmin)
 admin.site.register(Recipe, RecipeAdmin)
 admin.site.register(Tag, TagAdmin)
-admin.site.register(Ingridient, IngridientAdmin)
+admin.site.register(Ingredient, IngridientAdmin)
 admin.site.register(Follow, FollowAdmin)
 admin.site.register(FavorRecipes, FavorAdmin)

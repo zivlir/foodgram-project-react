@@ -1,18 +1,20 @@
 from django_filters.rest_framework import DjangoFilterBackend
+from djoser import views
 from rest_framework import filters, mixins, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import (IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from api.filters import RecipeFilter
-from api.models import (FavorRecipes, Follow, Ingridient, Recipe,
+from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
                         RecipeComponent, ShoppingList, Tag, User)
 from api.permissions import IsOwnerOrReadOnly
-from api.serializers import (FavorSerializer, FollowSerializer,
-                             IngidientSerializer, NewRecipeSerializer,
+from api.serializers import (AuthorSerializer, FavorSerializer,
+                             FollowSerializer, IngredientSerializer,
+                             ListFavorSerializer, NewRecipeSerializer,
                              RecipeSerializer, ShoppingSerializer,
                              TagSerializer)
 
@@ -31,7 +33,6 @@ class GetPostDelViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
 class RecipeViewSet(ModelViewSet):
     permission_classes = [IsOwnerOrReadOnly, ]
     queryset = Recipe.objects.all()
-    # serializer_class = RecipeSerializer
     filter_backends = [DjangoFilterBackend]
     filter_class = RecipeFilter
 
@@ -43,16 +44,21 @@ class RecipeViewSet(ModelViewSet):
 
 
 class IngredientsViewSet(GetPostViewSet):
-    queryset = Ingridient.objects.all()
-    serializer_class = IngidientSerializer
+    queryset = Ingredient.objects.all()
+    serializer_class = IngredientSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['pk', '^name']
 
 
 class FavoriteViewSet(GetPostDelViewSet):
-    queryset = FavorRecipes.objects.all()
-    serializer_class = FavorSerializer
     permission_classes = [IsAuthenticated]
+
+    def get(self, request, recipe_id):
+        user = request.user
+        recipe = get_object_or_404(Recipe, id=recipe_id)
+        FavorRecipes.objects.create(author=user, recipes=recipe)
+        serializer = FavorSerializer(recipe)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class TagViewSet(GetPostViewSet):
@@ -70,10 +76,25 @@ class ShoppingViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin,
         serializer.save(author=self.request.user, recipe=recipe)
 
 
-class FollowViewSet(GetPostDelViewSet):
-    queryset = Follow.objects.all()
-    serializer_class = FollowSerializer
-    permission_classes = [IsOwnerOrReadOnly]
+class AuthorViewSet(views.UserViewSet):
+    queryset = User.objects.all()
+    serializer_class = AuthorSerializer
+    permission_classes = [IsAuthenticated]
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    @action(methods=['GET', 'DELETE'], detail=True, permission_classes=[IsAuthenticated])
+    def follow(self, request, author_id=None):
+        user = self.request.user
+        following = get_object_or_404(User, id=author_id)
+        if request.method == 'GET':
+            new_follow = Follow.objects.create(user=user, author=following)
+            new_follow.save()
+            serializer = FollowSerializer(instance=following, context={'request': request})
+            return Response(serializer.data)
+
+    @action(detail=False)
+    def subscriptions(self, request):
+        print('subscriptions_list')
+        user = self.request.user
+        follow = Follow.objects.filter(user=user)
+        serializer = FollowSerializer(instance=follow, context={'request': request})
+
