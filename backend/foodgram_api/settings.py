@@ -22,7 +22,6 @@ INSTALLED_APPS = [
     'django.contrib.flatpages',
     'django.contrib.sites',
     'django.contrib.auth',
-    'jet',
     'django.contrib.admin',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -34,6 +33,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'djoser',
     'api',
+    'users',
 ]
 
 MIDDLEWARE = [
@@ -83,7 +83,7 @@ DATABASES = {
         }
 }
 
-AUTH_USER_MODEL = 'api.User'
+AUTH_USER_MODEL = 'users.User'
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -121,7 +121,7 @@ DJOSER = {
         'user_list': ['rest_framework.permissions.AllowAny'],
     },
     'SERIALIZERS': {
-        'user': 'api.serializers.AuthorSerializer',
+        'user': 'users.serializers.AuthorSerializer',
     },
 }
 

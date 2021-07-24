@@ -1,1 +1,6 @@
-# Not quite sure if a separate app is necessary
+from django.urls import include, path
+
+urlpatterns = [
+    path('', include('djoser.urls')),
+    path('auth/', include('djoser.urls.authtoken')),
+]

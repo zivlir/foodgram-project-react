@@ -7,10 +7,7 @@ from foodgram_api import settings
 # import debug_toolbar
 
 urlpatterns = [
-    # path('__debug__/', include(debug_toolbar.urls)),
-    path('jet/', include('jet.urls', 'jet')),
     path('admin/', admin.site.urls),
-    # path('auth/', include('django.contrib.auth.urls')),
     path('api/', include('api.urls')),
 ]
 

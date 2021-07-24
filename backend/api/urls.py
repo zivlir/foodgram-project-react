@@ -2,8 +2,9 @@ from django.conf import settings
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
-from .views import (AuthorViewSet, FavoriteViewSet, IngredientsViewSet,
+from .views import (FavoriteViewSet, IngredientsViewSet,
                     RecipeViewSet, ShoppingViewSet, TagViewSet)
+from users.views import AuthorViewSet
 
 v1_router = SimpleRouter()
 v1_router.register(
@@ -26,6 +27,4 @@ v1_router.register(
 urlpatterns = [
     # path('users/<int:author_id>/subscribe/', FollowViewSet.as_view(), name='new_follow'),
     path('', include(v1_router.urls)),
-    path('', include('djoser.urls')),
-    path('auth/', include('djoser.urls.authtoken')),
 ]
