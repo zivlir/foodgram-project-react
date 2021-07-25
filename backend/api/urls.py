@@ -9,20 +9,19 @@ v1_router = SimpleRouter()
 v1_router.register(r'ingredients', IngredientsViewSet, basename='ingredients')
 v1_router.register(r'recipes', RecipeViewSet, basename='recipes')
 v1_router.register(r'tags', TagViewSet, basename='tags')
-
-v1_router.register(
-    r'recipes/(?P<recipe_id>\d+)/favorite', FavoriteViewSet,
-    basename='favorite-detail'
-)
-v1_router.register(r'users/subsciptions', AuthorViewSet, basename='follow')
-v1_router.register(
-    r'users/(?P<author_id>\d+)/subscribe', AuthorViewSet ,
-    basename='new_follow'
-)
+v1_router.register('users/subsciptions', AuthorViewSet, basename='follows')
 
 
 urlpatterns = [
-    path('users/<int:user_id>/subscribe/', FavoriteViewSet),
+    path('users/<int:author_id>/subscribe/', AuthorViewSet),
+    path(
+        'recipes/<int:recipe_id>/favorite/',
+        FavoriteViewSet, name='add_to_favorites'
+    ),
+    path(
+        'recipes/<int:recipe_id>/shopping_cart/',
+        ShoppingViewSet, name='add_to_shop'
+    ),
     path('', include(v1_router.urls)),
     path('', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken')),

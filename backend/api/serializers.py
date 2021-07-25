@@ -40,9 +40,6 @@ class IngredientSerializer(serializers.ModelSerializer):
         test = Ingredient.objects.values('id').get(id=data)
         return data
 
-    def to_representation(self, instance):
-        return instance
-
 
 class TagSerializer(serializers.ModelSerializer):
 
@@ -99,19 +96,23 @@ class RecipeSerializer(serializers.ModelSerializer):
             ).exists()
 
 
-
 class NewRecipeSerializer(serializers.ModelSerializer):
     """
     Выделили сериализатор, обрабатывающий процесс создания (и обновления)
     рецепта
     """
-    tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True)
+    tags = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.all(), many=True
+    )
     author = UserSerializer(read_only=True)
     ingredients = IngredientInRecipe(many=True)
 
     class Meta:
         model = Recipe
-        fields = ('id', 'name', 'text','author', 'tags', 'ingredients', 'cooking_time')
+        fields = (
+            'id', 'name', 'text','author',
+            'tags', 'ingredients', 'cooking_time'
+        )
 
     def create(self, validated_data):
         author = self.context.get('request').user
@@ -137,7 +138,6 @@ class FollowSerializer(serializers.ModelSerializer):
         read_only=True,
         default=serializers.CurrentUserDefault()
     )
-    # recipes = RecipeSerializer()
 
     class Meta:
         model = Follow
@@ -146,12 +146,19 @@ class FollowSerializer(serializers.ModelSerializer):
 
 class ListFollowSerializer(serializers.ModelSerializer):
     recipes = RecipeSerializer(many=True, read_only=True)
-    recipes_count = serializers.SerializerMethodField(method_name='get_rec_count')
-    is_subscribed = serializers.SerializerMethodField(method_name='get_is_subscribed')
+    recipes_count = serializers.SerializerMethodField(
+        method_name='get_rec_count'
+    )
+    is_subscribed = serializers.SerializerMethodField(
+        method_name='get_is_subscribed'
+    )
 
     class Meta:
         model = User
-        fields = ('email', 'id', 'username', 'first_name', 'last_name', 'is_subscribed', 'recipes', 'recipes_count')
+        fields = (
+            'email', 'id', 'username', 'first_name', 'last_name',
+            'is_subscribed', 'recipes', 'recipes_count'
+        )
 
     def get_is_subscribed(self, user):
         rq_user = self.context.get('current_user')

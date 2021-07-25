@@ -52,7 +52,7 @@ class Recipe(models.Model):
         upload_to='media/',
         blank=True, null=True,
         verbose_name='Картинка рецепта'
-    )  # Add upload_to, verb name
+    )
     author = models.ForeignKey(
         User,
         related_name='recipes',

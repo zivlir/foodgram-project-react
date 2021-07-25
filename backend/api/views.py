@@ -13,11 +13,10 @@ from api.filters import RecipeFilter
 from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
                         RecipeComponent, ShoppingList, Tag, User)
 from api.permissions import IsOwnerOrReadOnly
-from api.serializers import (UserSerializer, FavorSerializer,
-                             FollowSerializer, IngredientSerializer,
-                             ListFavorSerializer, NewRecipeSerializer,
-                             RecipeSerializer, ShoppingSerializer,
-                             TagSerializer)
+from api.serializers import (FavorSerializer, FollowSerializer,
+                             IngredientSerializer, ListFavorSerializer,
+                             NewRecipeSerializer, RecipeSerializer,
+                             ShoppingSerializer, TagSerializer, UserSerializer)
 
 
 class GetPostViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
@@ -69,6 +68,7 @@ class FavoriteViewSet(GetPostDelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, recipe_id):
+        # This won't work!
         user = request.user
         recipe = get_object_or_404(Recipe, id=recipe_id)
         FavorRecipes.objects.create(author=user, recipes=recipe)
@@ -96,32 +96,42 @@ class AuthorViewSet(views.UserViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
-    @action(methods=['GET', 'DELETE'], detail=True, permission_classes=[IsAuthenticated])
+    @action(
+        methods=['GET', 'DELETE'], detail=True,
+        permission_classes=[IsAuthenticated]
+    )
     def follow(self, request, author_id=None):
         user = self.request.user
         following = get_object_or_404(User, id=author_id)
         if request.method == 'GET':
             new_follow = Follow.objects.create(user=user, author=following)
             new_follow.save()
-            serializer = FollowSerializer(instance=following, context={'request': request})
-            return Response(serializer.data)
+            serializer = FollowSerializer(
+                instance=following, context={'request': request}
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=False)
     def subscriptions(self, request):
         print('subscriptions_list')
         user = self.request.user
         follow = Follow.objects.filter(user=user)
-        serializer = FollowSerializer(instance=follow, context={'request': request})
+        serializer = FollowSerializer(
+            instance=follow, context={'request': request}
+        )
+        return Response(serializer.data)
 
 
-# class FollowViewSet(APIView):
-#     permission_classes = [IsAuthenticated, ]
-#
-#     def get(self, request, author_id):
-#         user = self.request.user
-#         following = get_object_or_404(User, id=author_id)
-#         if request.method == 'GET':
-#             new_follow = Follow.objects.create(user=user, author=following)
-#             new_follow.save()
-#             serializer = FollowSerializer(instance=following, context={'request': request})
-#             return Response(serializer.data)
+class FollowViewSet(APIView):
+    permission_classes = [IsAuthenticated, ]
+
+    def get(self, request, author_id):
+        user = self.request.user
+        following = get_object_or_404(User, id=author_id)
+        if request.method == 'GET':
+            new_follow = Follow.objects.create(user=user, author=following)
+            new_follow.save()
+            serializer = FollowSerializer(
+                instance=following, context={'request': request}
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
