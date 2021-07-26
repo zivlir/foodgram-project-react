@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'django.contrib.flatpages',
     'django.contrib.sites',
     'django.contrib.auth',
+    'jet',
     'django.contrib.admin',
     'django.contrib.contenttypes',
     'django.contrib.sessions',

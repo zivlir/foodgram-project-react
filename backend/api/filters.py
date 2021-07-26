@@ -21,6 +21,7 @@ class RecipeFilter(filters.FilterSet):
     is_in_shopping_cart = filters.BooleanFilter(
         method='get_shop_cart'
     )
+    tags = filters.CharFilter(field_name='tags__slug')
 
     class Meta:
         model = Recipe
@@ -37,3 +38,4 @@ class RecipeFilter(filters.FilterSet):
         if value:
             return Recipe.objects.filter(favorite_recipes__author=user)
         return Recipe.objects.all()
+
