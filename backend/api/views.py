@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser import views
 from rest_framework import filters, mixins, permissions, status, viewsets
@@ -150,3 +151,4 @@ class FollowListViewSet(ModelViewSet):
         ps = Recipe.objects.prefetch_related('author__user_favorites__recipes')
         qs = Recipe.objects.filter(user=self.request.user)
         return Recipe.objects.filter(author__follower=self.request.user)
+

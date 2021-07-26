@@ -139,6 +139,15 @@ class NewRecipeSerializer(serializers.ModelSerializer):
             'tags', 'ingredients', 'cooking_time', 'image'
         )
 
+
+    def to_representation(self, instance):
+        return RecipeSerializer(
+            instance,
+            context={
+                'request': self.context.get('request')
+            }
+        ).data
+
     def create(self, validated_data):
         author = self.context.get('request').user
         tags = validated_data.pop('tags')
@@ -158,13 +167,26 @@ class NewRecipeSerializer(serializers.ModelSerializer):
             )
         return recipe
 
-    def to_representation(self, instance):
-        return RecipeSerializer(
-            instance,
-            context={
-                'request': self.context.get('request')
-            }
-        ).data
+    def update(self, instance, validated_data):
+        tags = validated_data.pop('tags')
+        ingredients = validated_data.pop('ingredients')
+        RecipeComponent.objects.filter(recipe=instance).delete()
+        for ingredient in ingredients:
+            qs = Ingredient.objects.filter(id=ingredient['ingredient']['id'])
+            RecipeComponent.objects.create(
+                ingredient=qs.first(),
+                recipe=instance,
+                amount=ingredient['amount']
+            )
+        instance.name = validated_data.pop('name')
+        instance.text = validated_data.pop('text')
+        if validated_data.get('image') is not None:
+            instance.image = validated_data.pop('image')
+        instance.cooking_time = validated_data.pop('cooking_time')
+        instance.save()
+        instance.tags.set(tags)
+        return instance
+
 
 class ListFollowSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField(

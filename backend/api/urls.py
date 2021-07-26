@@ -2,8 +2,9 @@ from django.conf import settings
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
-from .views import (AuthorViewSet, FavoriteViewSet, IngredientViewSet,
+from api.views import (AuthorViewSet, FavoriteViewSet, IngredientViewSet,
                     RecipeViewSet, ShoppingViewSet, TagViewSet, FollowViewSet, FollowListViewSet)
+from api.utils import ShoppingCartDL
 
 v1_router = SimpleRouter()
 v1_router.register(r'ingredients', IngredientViewSet, basename='ingredients')
@@ -25,6 +26,7 @@ urlpatterns = [
         'recipes/<int:recipe_id>/shopping_cart/',
         ShoppingViewSet.as_view(), name='add_to_shop'
     ),
+    path('recipes/download_shopping_cart/', ShoppingCartDL.as_view(), name='shopping_cart_dl'),
     path('', include(v1_router.urls)),
     path('', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken')),
