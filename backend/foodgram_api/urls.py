@@ -5,7 +5,6 @@ from foodgram_api import settings
 # import debug_toolbar
 
 urlpatterns = [
-    path('jet', include('jet.urls', 'jet')),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
 ]

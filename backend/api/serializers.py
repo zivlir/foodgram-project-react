@@ -1,3 +1,4 @@
+from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 
 from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
@@ -90,9 +91,10 @@ class RecipeSerializer(serializers.ModelSerializer):
         'get_is_in_shopping_cart'
     )
     image = serializers.ImageField(
+        max_length=None,
         required=False,
         allow_empty_file=False,
-        use_url=True
+        use_url=True,
     )
 
     class Meta:
@@ -121,12 +123,7 @@ class RecipeSerializer(serializers.ModelSerializer):
 
 
 class NewRecipeSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(
-        max_length=None,
-        required=False,
-        allow_empty_file=False,
-        use_url=True,
-    )
+    image = Base64ImageField(use_url=True)
     tags = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(), many=True
     )
@@ -229,12 +226,29 @@ class ListFollowerSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time')
 
 
-class ShoppingListRecipeSerializer(serializers.ModelSerializer):
+class ListSubscriptionsSerializer(serializers.ModelSerializer):
+    recipes = ListFollowerSerializer(many=True, read_only=True)
+    recipes_count = serializers.SerializerMethodField('count_author_recipes')
+    is_subscribed = serializers.SerializerMethodField('check_if_subscribed')
 
     class Meta:
-        model = Recipe
-        fields = ('id', 'name', 'image', 'cooking_time')
+        model = User
+        fields = ('email', 'id', 'username', 'first_name',
+                  'last_name', 'is_subscribed', 'recipes', 'recipes_count')
 
+    def count_author_recipes(self, user):
+        return len(user.recipes.all())
+
+    def check_if_subscribed(self, user):
+        current_user = self.context.get('current_user')
+        other_user = user.following.all()
+        if user.is_anonymous:
+            return False
+        if other_user.count() == 0:
+            return False
+        if Follow.objects.filter(user=user, author=current_user).exists():
+            return True
+        return False
 
 class ShoppingSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(

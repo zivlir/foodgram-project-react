@@ -1,11 +1,12 @@
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser import views
+from foodgram_api import settings
 from rest_framework import filters, mixins, permissions, status, viewsets
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import (IsAuthenticated,
-                                        IsAuthenticatedOrReadOnly, AllowAny)
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
@@ -14,10 +15,12 @@ from api.filters import RecipeFilter
 from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
                         RecipeComponent, ShoppingList, Tag, User)
 from api.permissions import IsOwnerOrReadOnly
-from api.serializers import (FavorSerializer,
-                             IngredientSerializer,
-                             NewRecipeSerializer, RecipeSerializer,
-                             ShoppingSerializer, TagSerializer, UserSerializer, ListFollowerSerializer)
+from api.serializers import (
+    FavorSerializer, IngredientSerializer,
+    ListFollowerSerializer, ListSubscriptionsSerializer, NewRecipeSerializer,
+    RecipeSerializer, ShoppingSerializer,
+    TagSerializer, UserSerializer
+)
 
 
 class GetPostViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
@@ -77,11 +80,11 @@ class FavoriteViewSet(APIView):
         favorite_obj = get_object_or_404(FavorRecipes, user=user, recipe=recipe)
         if not favorite_obj:
             return Response(
-                'Рецепт не был в избранном',
+                'The recipe has not been favorited',
                 status=status.HTTP_400_BAD_REQUEST)
         favorite_obj.delete()
         return Response(
-            'Удалено', status=status.HTTP_204_NO_CONTENT)
+            'Removed', status=status.HTTP_204_NO_CONTENT)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -152,3 +155,15 @@ class FollowListViewSet(ModelViewSet):
         qs = Recipe.objects.filter(user=self.request.user)
         return Recipe.objects.filter(author__follower=self.request.user)
 
+
+@api_view(http_method_names=['GET', ])
+@permission_classes([IsAuthenticated])
+def FollowListView(request):
+    user = User.objects.filter(following__user=request.user)
+    paginator = PageNumberPagination()
+    paginator.page_size = 10  #change to PAGE_SIZE
+    response = paginator.paginate_queryset(user, request)
+    serializer = ListSubscriptionsSerializer(
+        response, many=True, context={'current_user': request.user}
+    )
+    return paginator.get_paginated_response(serializer.data)
