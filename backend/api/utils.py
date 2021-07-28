@@ -31,8 +31,10 @@ class ShoppingCartDL(APIView):
                                 amt)
         wishlist = []
         for item in shop_list:
-            wishlist.append(f'{item} - {shop_list[item]["amount"]} '
-                            f'{shop_list[item]["measurement_unit"]} \n')
+            wishlist.append(
+                f'{item} - {shop_list[item]["amount"]} '
+                f'{shop_list[item]["measurement_unit"]} \n'
+            )
         wishlist.append('\n')
         wishlist.append('FoodGram, 2021')
         response = HttpResponse(wishlist, 'Content-Type: text/plain')

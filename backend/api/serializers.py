@@ -11,6 +11,7 @@ class FollowSerializer(serializers.ModelSerializer):
         model = Follow
         fields = '__all__'
 
+
 class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -31,8 +32,6 @@ class UserSerializerCom(serializers.ModelSerializer):
 
     def get_is_subscribed(self, author):
         request = self.context.get('request')
-        if request is None or request.user.is_anonymous:
-            return False
         return Follow.objects.filter(
             user=request.user, author=author
         ).exists()
@@ -77,6 +76,7 @@ class RecipeComponentSerializer(serializers.ModelSerializer):
     class Meta:
         model = RecipeComponent
         fields = ('id', 'name', 'units', 'amount',)
+
 
 # Всё же его необходимо разбить - создавать универсальные,
 # но монструозные сущности здесь неуместно
@@ -132,10 +132,9 @@ class NewRecipeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
-        fields = ('id', 'name', 'text','author',
-            'tags', 'ingredients', 'cooking_time', 'image'
-        )
-
+        fields = ('id', 'name', 'text', 'author',
+                  'tags', 'ingredients', 'cooking_time', 'image'
+                  )
 
     def to_representation(self, instance):
         return RecipeSerializer(
@@ -207,10 +206,9 @@ class ListFollowSerializer(serializers.ModelSerializer):
     def get_is_subscribed(self, user):
         author = self.context.get('current_user')
         author_follows = user.following.all()
-        if user.is_anonymous or author_follows.count() == 0:
-            return False
-        elif Follow.objects.filter(user=user, author=author).exists():
+        if Follow.objects.filter(user=user, author=author).exists():
             return True
+        return False
 
 
 class ListFollowerSerializer(serializers.ModelSerializer):
@@ -250,6 +248,7 @@ class ListSubscriptionsSerializer(serializers.ModelSerializer):
             return True
         return False
 
+
 class ShoppingSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
         slug_field='username',
@@ -265,7 +264,8 @@ class FavorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FavorRecipes
-        fiels = ('id', 'name', 'image', 'cooking_time')
+        fields = '__all__'
+        # fiels = ('id', 'name', 'image', 'cooking_time')
 
 
 class ListFavorSerializer(serializers.ModelSerializer):

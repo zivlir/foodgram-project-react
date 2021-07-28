@@ -15,12 +15,11 @@ from api.filters import RecipeFilter
 from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
                         RecipeComponent, ShoppingList, Tag, User)
 from api.permissions import IsOwnerOrReadOnly
-from api.serializers import (
-    FavorSerializer, IngredientSerializer,
-    ListFollowerSerializer, ListSubscriptionsSerializer, NewRecipeSerializer,
-    RecipeSerializer, ShoppingSerializer,
-    TagSerializer, UserSerializer
-)
+from api.serializers import (FavorSerializer, IngredientSerializer,
+                             ListFollowerSerializer,
+                             ListSubscriptionsSerializer, NewRecipeSerializer,
+                             RecipeSerializer, ShoppingSerializer,
+                             TagSerializer, UserSerializer)
 
 
 class GetPostViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
@@ -77,7 +76,9 @@ class FavoriteViewSet(APIView):
     def delete(self, request, recipe_id):
         user = request.user
         recipe = get_object_or_404(Recipe, id=recipe_id)
-        favorite_obj = get_object_or_404(FavorRecipes, user=user, recipe=recipe)
+        favorite_obj = get_object_or_404(
+            FavorRecipes, user=user, recipe=recipe
+        )
         if not favorite_obj:
             return Response(
                 'The recipe has not been favorited',
@@ -92,7 +93,6 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = (AllowAny,)
-
 
 
 class ShoppingViewSet(APIView):
@@ -161,7 +161,7 @@ class FollowListViewSet(ModelViewSet):
 def FollowListView(request):
     user = User.objects.filter(following__user=request.user)
     paginator = PageNumberPagination()
-    paginator.page_size = 10  #change to PAGE_SIZE
+    paginator.page_size = 10  # change to PAGE_SIZE
     response = paginator.paginate_queryset(user, request)
     serializer = ListSubscriptionsSerializer(
         response, many=True, context={'current_user': request.user}
