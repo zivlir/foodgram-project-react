@@ -1,17 +1,5 @@
-from django.contrib.auth.models import AbstractUser
-# from django.contrib.auth import get_user_model
 from django.db import models
-
-
-class User(AbstractUser):
-    email = models.EmailField(
-        verbose_name='email', unique=True, null=True
-    )
-    REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
-    USERNAME_FIELD = 'email'
-
-    def __str__(self):
-        return self.username
+from users.models import User
 
 
 class Ingredient(models.Model):
@@ -20,11 +8,13 @@ class Ingredient(models.Model):
         verbose_name='Название'
     )
     units = models.CharField(
-        max_length=16
+        max_length=16,
+        verbose_name='Единица измерения'
     )
 
     class Meta:
-        verbose_name = 'Ingredient'
+        verbose_name = 'Ингидиент'
+        verbose_name_plural = 'Ингидиенты'
 
     def __str__(self):
         return self.name
@@ -37,10 +27,18 @@ class Tag(models.Model):
     )
     color = models.CharField(
         max_length=200,
-        verbose_name='Smh',
+        verbose_name='Цвет',
         null=True
     )
-    slug = models.SlugField(unique=True, null=True)
+    slug = models.SlugField(
+        unique=True,
+        max_length=200,
+        verbose_name='Короткое имя'
+    )
+
+    class Meta:
+        verbose_name = 'Тэг'
+        verbose_name_plural = 'Тэги'
 
     def __str__(self):
         return self.slug
@@ -56,12 +54,12 @@ class Recipe(models.Model):
     author = models.ForeignKey(
         User,
         related_name='recipes',
-        verbose_name='Пользователь',
+        verbose_name='Автор',
         on_delete=models.CASCADE
     )
     ingredients = models.ManyToManyField(
         Ingredient,
-        verbose_name='Ingredients',
+        verbose_name='Ингидиенты',
         through='RecipeComponent'
     )
     text = models.TextField(
@@ -70,11 +68,11 @@ class Recipe(models.Model):
     )
     tags = models.ManyToManyField(
         Tag,
-        related_name='tags',
+        related_name='recipes',
         verbose_name='Tags'
     )
     cooking_time = models.PositiveSmallIntegerField(
-        verbose_name='Cooking time'
+        verbose_name='Время приготовления'
     )
     pub_date = models.DateTimeField(
         auto_now_add=True,
@@ -83,6 +81,7 @@ class Recipe(models.Model):
 
     class Meta:
         verbose_name = 'Рецепт'
+        verbose_name_plural = 'Рецепты'
         ordering = ('-pub_date', )
 
     def __str__(self):
@@ -104,7 +103,15 @@ class Follow(models.Model):
     )
 
     class Meta:
+        verbose_name = 'Избранное'
+        verbose_name_plural = 'Список избранного'
         unique_together = ['user', 'author']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'author'],
+                name='follow_user_author_unique'
+            )
+        ]
 
 
 class ShoppingList(models.Model):
@@ -120,6 +127,20 @@ class ShoppingList(models.Model):
         verbose_name='Пользователь',
         related_name='author'
     )
+
+    class Meta:
+        verbose_name='Рецепт в корзине'
+        verbose_name_plural='Рецепты в корзине'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['author', 'recipe'],
+                name='shopping_author_recipe_unique'
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.recipe} в избранном у {self.author}'
+
 
 
 class FavorRecipes(models.Model):
@@ -139,7 +160,12 @@ class FavorRecipes(models.Model):
 
     class Meta:
         unique_together = ['recipes', 'author']
-
+        constraints = [
+            models.UniqueConstraint(
+                name='favorite_author_unique_recipes',
+                fields=['author', 'recipes']
+            )
+        ]
 
 class RecipeComponent(models.Model):
     """
@@ -149,7 +175,7 @@ class RecipeComponent(models.Model):
         Ingredient,
         on_delete=models.CASCADE,
         related_name='recipe_ingredient',
-        verbose_name='Компонент рецепта'
+        verbose_name='Ингидиенты'
     )
     recipe = models.ForeignKey(
         Recipe,
@@ -157,4 +183,15 @@ class RecipeComponent(models.Model):
         related_name='component_recipes',
         verbose_name='Рецепт'
     )
-    amount = models.PositiveSmallIntegerField()
+    amount = models.PositiveSmallIntegerField(
+        verbose_name='Количество'
+    )
+
+    class Meta:
+        verbose_name = 'Количество ингидиента'
+        constraints = [
+            models.UniqueConstraint(
+                name='recipe_unique_component',
+                fields=['ingredient', 'recipe']
+            )
+        ]

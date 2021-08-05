@@ -1,8 +1,6 @@
 from django.http import HttpResponse
-from django_filters.rest_framework import DjangoFilterBackend
 from djoser import views
-from foodgram_api import settings
-from rest_framework import filters, mixins, permissions, status, viewsets
+from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
@@ -13,7 +11,8 @@ from rest_framework.viewsets import ModelViewSet
 
 from api.filters import RecipeFilter
 from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
-                        RecipeComponent, ShoppingList, Tag, User)
+                        RecipeComponent, ShoppingList, Tag)
+from users.models import User
 from api.permissions import IsOwnerOrReadOnly
 from api.serializers import (FavorSerializer, IngredientSerializer,
                              ListFollowerSerializer,
