@@ -51,7 +51,7 @@ class TagSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class ListRecipeUserSerializer(serializers.ModelSerializer):
+class WriteRecipeUserSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
 
     class Meta:
@@ -122,7 +122,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             ).exists()
 
 
-class NewRecipeSerializer(serializers.ModelSerializer):
+class ReadRecipeSerializer(serializers.ModelSerializer):
     image = Base64ImageField(use_url=True)
     tags = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(), many=True

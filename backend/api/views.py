@@ -1,4 +1,4 @@
-from django.http import HttpResponse
+from django.db.models import Exists, OuterRef
 from djoser import views
 from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
@@ -16,7 +16,7 @@ from users.models import User
 from api.permissions import IsOwnerOrReadOnly
 from api.serializers import (FavorSerializer, IngredientSerializer,
                              ListFollowerSerializer,
-                             ListSubscriptionsSerializer, NewRecipeSerializer,
+                             ListSubscriptionsSerializer, ReadRecipeSerializer,
                              RecipeSerializer, ShoppingSerializer,
                              TagSerializer, UserSerializer)
 
@@ -33,14 +33,53 @@ class GetPostDelViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
-    queryset = Recipe.objects.all()
     filter_class = RecipeFilter
     permission_classes = [IsOwnerOrReadOnly, ]
+
+    # def perform_create(self, serializer):
+    #     return serializer.save(author=self.request.user.id)
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.is_anonymous or not user:
+            return Recipe.objects.all()
+
+        queryset = Recipe.objects.annotate(
+            is_favorited=Exists(FavorRecipes.objects.filter(
+                author=user, recipes_id=OuterRef('pk')
+            )
+            ),
+            is_in_shopping_cart=Exists(
+                ShoppingList.objects.filter(
+                    author=user, recipe_id=OuterRef('pk')
+                )
+            )
+        )
+        is_favorited = self.request.query_params.get('is_favorited')
+        is_in_shopping_cart = self.request.query_params.get('is_in_shopping_cart')
+        favorite = FavorRecipes.objects.filter(author=user)
+        shopping_list = ShoppingList.objects.filter(author=self.request.user)
+
+        # Обрабатываем запрос как строки, чтобы не начать фильтрацию при
+        # отсутствии параметра
+        if is_favorited == 'true':
+            queryset = queryset.filter(favorite_recipes__in=favorite)
+        elif is_favorited == 'false':
+            queryset = queryset.exclude(favorite_recipes__in=favorite)
+        if is_in_shopping_cart == "true":
+            queryset = queryset.filter(shop_list__in=shopping_list)
+        elif is_in_shopping_cart == "false":
+            queryset = queryset.exclude(shop_list__in=shopping_list)
+
+
+        return queryset.all().order_by('-id')
+
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
             return RecipeSerializer
-        return NewRecipeSerializer
+        return ReadRecipeSerializer
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
