@@ -2,9 +2,12 @@ from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
 from api.utils import ShoppingCartDL
-from api.views import (FavoriteViewSet, FollowListView, FollowViewSet,
-                       IngredientViewSet, RecipeViewSet, ShoppingViewSet,
-                       TagViewSet)
+from api.views import (
+    FavoriteViewSet,
+    FollowReadViewSet, FollowViewSet, IngredientViewSet, RecipeViewSet,
+    ShoppingViewSet,
+    TagViewSet
+)
 
 v1_router = SimpleRouter()
 v1_router.register('ingredients', IngredientViewSet, basename='ingredients')
@@ -20,7 +23,7 @@ urlpatterns = [
     ),
     path(
         'users/subscriptions/',
-        FollowListView, name='subscriptions'
+        FollowReadViewSet.as_view(), name='subscriptions'
     ),
     path(
         'recipes/<int:recipe_id>/favorite/',

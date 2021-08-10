@@ -2,25 +2,26 @@ from django.db.models import Exists, OuterRef, Value
 from djoser import views
 from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.generics import get_object_or_404
+from rest_framework.generics import ListAPIView, get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
-from django.db import models
 
-from api.filters import RecipeFilter
+from api.filters import RecipeFilter, IngredientFilter
 from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
                         RecipeComponent, ShoppingList, Tag)
 from users.models import User
 from api.permissions import IsOwnerOrReadOnly
-from api.serializers import (FavorSerializer, IngredientSerializer,
-                             FollowerReadSerializer,
-                             ListSubscriptionsSerializer, RecipeReadSerializer,
-                             RecipeWriteSerializer, ShoppingSerializer,
-                             TagSerializer, UserSerializer)
-
+from api.serializers import (
+    FavorSerializer, FollowReadSerializer, IngredientSerializer,
+    FollowerReadSerializer,
+    ListSubscriptionsSerializer, RecipeReadSerializer,
+    RecipeWriteSerializer, ShoppingSerializer,
+    TagSerializer, UserSerializer
+)
+from users.serializers import UserSerializer
 
 class GetPostViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
                      mixins.RetrieveModelMixin, viewsets.GenericViewSet):
@@ -58,7 +59,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
         # Обрабатываем запрос как строки, чтобы не начать фильтрацию при
         # отсутствии параметра
-
         if _favorited == 'true':
             queryset = queryset.filter(is_favorited=True)
         elif _favorited == 'false':
@@ -67,7 +67,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(is_in_shopping_list=True)
         elif _in_shopping_cart == 'false':
             queryset = queryset.exclude(is_in_shopping_list=True)
-        # return queryset
+        return queryset
 
     def perform_create(self, serializer):
         return serializer.save(author=self.request.user)
@@ -76,7 +76,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.request.method in ['GET', ]:
             return RecipeReadSerializer
-        return RecipeReadSerializer
+        return RecipeWriteSerializer
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -88,7 +88,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     permission_classes = (AllowAny, )
-    filter_backends = [filters.SearchFilter]
+    filter_class = IngredientFilter
     search_fields = ['name', ]
 
 
@@ -127,6 +127,7 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = (AllowAny,)
+    pagination_class = None
 
 
 class ShoppingViewSet(APIView):
@@ -158,6 +159,18 @@ class AuthorViewSet(views.UserViewSet):
     permission_classes = [IsAuthenticated]
 
 
+# @api_view(http_method_names=['GET', ])
+# @permission_classes([IsAuthenticated])
+# def FollowListView(request):
+#     user = User.objects.filter(following__user=request.user)
+#     paginator = PageNumberPagination()
+#     paginator.page_size = 10  # change to PAGE_SIZE
+#     response = paginator.paginate_queryset(user, request)
+#     serializer = ListSubscriptionsSerializer(
+#         response, many=True, context={'current_user': request.user}
+#     )
+#     return paginator.get_paginated_response(serializer.data)
+
 class FollowViewSet(APIView):
     permission_classes = (IsAuthenticated, )
 
@@ -180,24 +193,16 @@ class FollowViewSet(APIView):
         return Response('Unsubscribed',
                         status=status.HTTP_204_NO_CONTENT)
 
-
-class FollowListViewSet(ModelViewSet):
-    serializer_class = FollowerReadSerializer
+class FollowReadViewSet(ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = FollowReadSerializer
     permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
-        ps = Recipe.objects.prefetch_related('author__user_favorites__recipes')
-        qs = Recipe.objects.filter(user=self.request.user)
-        return Recipe.objects.filter(author__follower=self.request.user)
+        return User.objects.filter(following__user=self.request.user)
 
 
-@api_view(http_method_names=['GET', ])
-@permission_classes([IsAuthenticated])
-def FollowListView(request):
-    user = User.objects.filter(following__user=request.user)
-    paginator = PageNumberPagination()
-    paginator.page_size = 10  # change to PAGE_SIZE
-    response = paginator.paginate_queryset(user, request)
-    serializer = ListSubscriptionsSerializer(
-        response, many=True, context={'current_user': request.user}
-    )
-    return paginator.get_paginated_response(serializer.data)
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({'request': self.request})
+        return context

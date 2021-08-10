@@ -17,3 +17,12 @@ class UserSerializerCom(serializers.ModelSerializer):
         return Follow.objects.filter(
             user=request.user, author=author
         ).exists()
+
+
+
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = ('email', 'id', 'username',
+                  'first_name', 'last_name')
