@@ -47,11 +47,11 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 
 class IngredientWriteSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(source='ingredient.id')
+    id = serializers.IntegerField()
     amount = serializers.IntegerField()
 
     class Meta:
-        model = RecipeComponent
+        model = Ingredient
         fields = ('id', 'amount')
 
 class TagSerializer(serializers.ModelSerializer):
@@ -124,15 +124,15 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
         recipe = Recipe.objects.create(**validated_data)
-        # recipe.save()
+        recipe.save()
         recipe.tags.set(tags)
         for ingredient in ingredients:
-            ingr_id = ingredient['ingredient']['id']
-            amount = ingredient['amount']
+            ingr_id = Ingredient.objects.get(id=ingredient['id'])
+            amt = ingredient['amount']
             RecipeComponent.objects.create(
-                ingredient_id=ingr_id,
+                ingredient=ingr_id,
                 recipe=recipe,
-                amount=amount
+                amount=amt
             )
         return recipe
 
@@ -155,6 +155,15 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         instance.save()
         instance.tags.set(tags)
         return instance
+
+    def to_representation(self, instance):
+        return RecipeReadSerializer(
+            instance,
+            context={
+                'request': self.context.get('request')
+            }
+        ).data
+
 
 class RecipeReadSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
@@ -193,13 +202,7 @@ class RecipeReadSerializer(serializers.ModelSerializer):
                 author=user, recipes=recipe
             ).exists()
 
-    # def to_representation(self, instance):
-    #     return RecipeWriteSerializer(
-    #         instance,
-    #         context={
-    #             'request': self.context.get('request')
-    #         }
-    #     ).data
+
 
 
 
