@@ -1,6 +1,7 @@
 from django.db import models
-from users.models import User
+from django.db.models import Exists, OuterRef, Value
 
+from users.models import User
 
 class Ingredient(models.Model):
     name = models.CharField(
@@ -44,6 +45,33 @@ class Tag(models.Model):
         return self.slug
 
 
+class RecipeQuerySet(models.QuerySet):
+    """
+    Выделенный QS с дополнительными аннотированными полями
+    """
+    # Честно сказать, сначала не сразу понял, что ты имел в виду под переносом
+    # части логики ближе к моделям, а потом как понял :D
+    #
+    def opt_annotations(self, user):
+        if user.is_anonymous:
+            return self.annotate(
+                is_favorited=Value(
+                    False, output_field=models.BooleanField()
+                ),
+                is_in_shopping_cart=Value(
+                    False, output_field=models.BooleanField()
+                )
+            )
+        return self.annotate(
+            is_favorited=Exists(FavorRecipes.objects.filter(
+                author=user, recipes_id=OuterRef('pk')
+            )),
+            is_in_shopping_list=Exists(ShoppingList.objects.filter(
+                author=user, recipe_id=OuterRef('pk')
+            ))
+        )
+
+
 class Recipe(models.Model):
     name = models.CharField(max_length=200)
     image = models.ImageField(
@@ -78,6 +106,16 @@ class Recipe(models.Model):
         auto_now_add=True,
         verbose_name='Дата создания'
     )
+    #
+    # @property
+    # def is_favorited(self):
+    #     return self.is_favorited
+    #
+    # @property
+    # def is_in_shopping_cart(self):
+    #     return self.is_in_shopping_cart
+    #
+    # objects = models.Manager.from_queryset(RecipeQuerySet)()
 
     class Meta:
         verbose_name = 'Рецепт'

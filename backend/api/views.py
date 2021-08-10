@@ -1,13 +1,14 @@
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, OuterRef, Value
 from djoser import views
 from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+from django.db import models
 
 from api.filters import RecipeFilter
 from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
@@ -15,9 +16,9 @@ from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
 from users.models import User
 from api.permissions import IsOwnerOrReadOnly
 from api.serializers import (FavorSerializer, IngredientSerializer,
-                             ListFollowerSerializer,
-                             ListSubscriptionsSerializer, ReadRecipeSerializer,
-                             RecipeSerializer, ShoppingSerializer,
+                             FollowerReadSerializer,
+                             ListSubscriptionsSerializer, RecipeReadSerializer,
+                             RecipeWriteSerializer, ShoppingSerializer,
                              TagSerializer, UserSerializer)
 
 
@@ -36,50 +37,46 @@ class RecipeViewSet(viewsets.ModelViewSet):
     filter_class = RecipeFilter
     permission_classes = [IsOwnerOrReadOnly, ]
 
-    # def perform_create(self, serializer):
-    #     return serializer.save(author=self.request.user.id)
-
     def get_queryset(self):
         user = self.request.user
-
-        if user.is_anonymous or not user:
-            return Recipe.objects.all()
-
-        queryset = Recipe.objects.annotate(
+        queryset = Recipe.objects.all()
+        if user.is_anonymous:
+            return queryset
+        else:
+            queryset = queryset.annotate(
             is_favorited=Exists(FavorRecipes.objects.filter(
                 author=user, recipes_id=OuterRef('pk')
-            )
-            ),
-            is_in_shopping_cart=Exists(
-                ShoppingList.objects.filter(
-                    author=user, recipe_id=OuterRef('pk')
-                )
-            )
+            )),
+            is_in_shopping_list=Exists(ShoppingList.objects.filter(
+                author=user, recipe_id=OuterRef('pk')
+            ))
         )
-        is_favorited = self.request.query_params.get('is_favorited')
-        is_in_shopping_cart = self.request.query_params.get('is_in_shopping_cart')
-        favorite = FavorRecipes.objects.filter(author=user)
-        shopping_list = ShoppingList.objects.filter(author=self.request.user)
+        _favorited = self.request.query_params.get('is_favorited')
+        _in_shopping_cart = self.request.query_params.get(
+            'is_in_shopping_cart'
+        )
 
         # Обрабатываем запрос как строки, чтобы не начать фильтрацию при
         # отсутствии параметра
-        if is_favorited == 'true':
-            queryset = queryset.filter(favorite_recipes__in=favorite)
-        elif is_favorited == 'false':
-            queryset = queryset.exclude(favorite_recipes__in=favorite)
-        if is_in_shopping_cart == "true":
-            queryset = queryset.filter(shop_list__in=shopping_list)
-        elif is_in_shopping_cart == "false":
-            queryset = queryset.exclude(shop_list__in=shopping_list)
 
+        if _favorited == 'true':
+            queryset = queryset.filter(is_favorited=True)
+        elif _favorited == 'false':
+            queryset = queryset.filter(is_favorited=False)
+        if _in_shopping_cart == 'true':
+            queryset = queryset.filter(is_in_shopping_list=True)
+        elif _in_shopping_cart == 'false':
+            queryset = queryset.exclude(is_in_shopping_list=True)
+        # return queryset
 
-        return queryset.all().order_by('-id')
+    def perform_create(self, serializer):
+        return serializer.save(author=self.request.user)
 
 
     def get_serializer_class(self):
-        if self.action in ['list', 'retrieve']:
-            return RecipeSerializer
-        return ReadRecipeSerializer
+        if self.request.method in ['GET', ]:
+            return RecipeReadSerializer
+        return RecipeReadSerializer
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -127,7 +124,6 @@ class FavoriteViewSet(APIView):
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
-    pagination_class = None
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = (AllowAny,)
@@ -186,7 +182,7 @@ class FollowViewSet(APIView):
 
 
 class FollowListViewSet(ModelViewSet):
-    serializer_class = ListFollowerSerializer
+    serializer_class = FollowerReadSerializer
     permission_classes = [IsAuthenticated]
     def get_queryset(self):
         ps = Recipe.objects.prefetch_related('author__user_favorites__recipes')
