@@ -90,6 +90,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (AllowAny, )
     filter_class = IngredientFilter
     search_fields = ['name', ]
+    pagination_class = None
 
 
 class FavoriteViewSet(APIView):
@@ -112,7 +113,7 @@ class FavoriteViewSet(APIView):
         user = request.user
         recipe = get_object_or_404(Recipe, id=recipe_id)
         favorite_obj = get_object_or_404(
-            FavorRecipes, user=user, recipe=recipe
+            FavorRecipes, author=user, recipes=recipe
         )
         if not favorite_obj:
             return Response(
@@ -185,9 +186,9 @@ class FollowViewSet(APIView):
         serializer = UserSerializer(author)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def delete(self, request, user_id):
+    def delete(self, request, author_id):
         user = request.user
-        author = get_object_or_404(User, id=user_id)
+        author = get_object_or_404(User, id=author_id)
         follow = get_object_or_404(Follow, user=user, author=author)
         follow.delete()
         return Response('Unsubscribed',
