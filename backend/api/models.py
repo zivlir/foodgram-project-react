@@ -1,6 +1,6 @@
 from django.db import models
 from django.db.models import Exists, OuterRef, Value
-
+from django.core.exceptions import ValidationError
 from users.models import User
 
 class Ingredient(models.Model):
@@ -18,7 +18,7 @@ class Ingredient(models.Model):
         verbose_name_plural = 'Ингидиенты'
 
     def __str__(self):
-        return self.name
+        return f'{self.name}, {self.units}'
 
 
 class Tag(models.Model):
@@ -49,9 +49,6 @@ class RecipeQuerySet(models.QuerySet):
     """
     Выделенный QS с дополнительными аннотированными полями
     """
-    # Честно сказать, сначала не сразу понял, что ты имел в виду под переносом
-    # части логики ближе к моделям, а потом как понял :D
-    #
     def opt_annotations(self, user):
         if user.is_anonymous:
             return self.annotate(
@@ -106,16 +103,14 @@ class Recipe(models.Model):
         auto_now_add=True,
         verbose_name='Дата создания'
     )
-    #
-    # @property
-    # def is_favorited(self):
-    #     return self.is_favorited
-    #
-    # @property
-    # def is_in_shopping_cart(self):
-    #     return self.is_in_shopping_cart
-    #
-    # objects = models.Manager.from_queryset(RecipeQuerySet)()
+
+    def clean(self):
+        if self.ingredients.count() < 1:
+            raise ValidationError('Список ингридиентов не может быть пуст!')
+        if self.cooking_time < 1:
+            raise ValidationError(
+                'Время приготовления - неотрицательное значение'
+            )
 
     class Meta:
         verbose_name = 'Рецепт'
@@ -139,6 +134,11 @@ class Follow(models.Model):
         related_name='following',
         verbose_name='Подписки'
     )
+    def clean(self):
+        if self.user == self.author:
+            raise ValidationError(
+                'Нельзя подписаться на самого себя'
+            )
 
     class Meta:
         verbose_name = 'Избранное'
@@ -204,6 +204,7 @@ class FavorRecipes(models.Model):
                 fields=['author', 'recipes']
             )
         ]
+
 
 class RecipeComponent(models.Model):
     """

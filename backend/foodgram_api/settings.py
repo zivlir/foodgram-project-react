@@ -8,9 +8,8 @@ load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-SECRET_KEY = os.getenv(
-    'SECRET_KEY', default=get_random_secret_key()
-)
+SECRET_KEY = os.getenv('SECRET_KEY')
+
 PAGE_SIZE = 10
 
 DEBUG = bool(util.strtobool(os.getenv('DEBUG_MODE')))
@@ -120,6 +119,7 @@ DJOSER = {
     'SERIALIZERS': {
         'user': 'users.serializers.UserSerializerCom',
     },
+    'HID_USERS': False,
 }
 
 LANGUAGE_CODE = 'en-us'

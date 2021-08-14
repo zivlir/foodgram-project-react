@@ -1,7 +1,6 @@
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
-from rest_framework.generics import get_object_or_404
-
+from rest_framework.validators import UniqueTogetherValidator
 from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
                         RecipeComponent, ShoppingList, Tag)
 from users.models import User
@@ -110,6 +109,12 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         ingredients = self.initial_data.get('ingredients')
+        if ingredients.count() == 0:
+            raise serializers.ValidationError(
+                {'ingredients': (
+                    'Список ингридиентов не получен'
+                )}
+            )
         for ingredient in ingredients:
             if int(ingredient['amount']) <= 0:
                 raise serializers.ValidationError(
@@ -120,12 +125,13 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        author = self.context.get('request').user
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
         recipe = Recipe.objects.create(**validated_data)
         recipe.save()
         recipe.tags.set(tags)
+        ingr_inst = []
+        # recipe.ingredients.bulk_create(ingredients)
         for ingredient in ingredients:
             ingr_id = Ingredient.objects.get(id=ingredient['id'])
             amt = ingredient['amount']
@@ -283,6 +289,16 @@ class ShoppingSerializer(serializers.ModelSerializer):
 
 
 class FavorSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        follow_exists = FavorRecipes.objects.filter(
+            author=attrs['author'],
+            recipes=attrs['recipes']
+        ).exists()
+        if follow_exists:
+            raise serializers.ValidationError(
+                'Вы уже добавили рецепт в избранное'
+            )
+        return attrs
 
     class Meta:
         model = FavorRecipes

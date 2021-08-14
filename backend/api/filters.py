@@ -11,17 +11,17 @@ FILTER_CHOICES = (
 class RecipeFilter(filters.FilterSet):
     """
     Перенесли фильтрацию во вьюсет, оставив только тэги
-
     """
     tags = filters.AllValuesMultipleFilter(
         field_name='tags__slug'
     )
-    # is_favorited = filters.BooleanFilter()
 
 
     class Meta:
         model = Recipe
         fields = ['author', 'tags',]
 
+
 class IngredientFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='istartswith')
+

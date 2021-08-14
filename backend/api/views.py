@@ -1,6 +1,6 @@
 from django.db.models import Exists, OuterRef, Value
 from djoser import views
-from rest_framework import filters, mixins, status, viewsets
+from rest_framework import filters, mixins, status, viewsets, generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import ListAPIView, get_object_or_404
 from rest_framework.pagination import PageNumberPagination
@@ -16,7 +16,7 @@ from users.models import User
 from api.permissions import IsOwnerOrReadOnly
 from api.serializers import (
     FavorSerializer, FollowReadSerializer, IngredientSerializer,
-    FollowerReadSerializer,
+    FollowerReadSerializer, FollowSerializer,
     ListSubscriptionsSerializer, RecipeReadSerializer,
     RecipeWriteSerializer, ShoppingSerializer,
     TagSerializer, UserSerializer
@@ -32,6 +32,7 @@ class GetPostDelViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
                         mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
                         viewsets.GenericViewSet):
     pass
+
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
@@ -69,6 +70,14 @@ class RecipeViewSet(viewsets.ModelViewSet):
             queryset = queryset.exclude(is_in_shopping_list=True)
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     def perform_create(self, serializer):
         return serializer.save(author=self.request.user)
 
@@ -95,16 +104,22 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
 class FavoriteViewSet(APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = FavorSerializer
+
+    # def perform_create(self, recipe_id):
+    #     recipe = get_object_or_404(Recipe, id=self.kwargs['recipe_id'])
+    #     serializer.save(author=self.request.user, recipe=recipe)
 
     def get(self, request, recipe_id):
         user = request.user
         recipe = get_object_or_404(Recipe, id=recipe_id)
-        if FavorRecipes.objects.filter(author=user, recipes=recipe).exists():
-            return Response(
-                'The object exists already',
-                status=status.HTTP_400_BAD_REQUEST)
-        FavorRecipes.objects.create(author=user, recipes=recipe)
-        serializer = FavorSerializer(recipe)
+        data = {
+            'author': user.id,
+            'recipes': recipe.id
+        }
+        serializer = FavorSerializer(data=data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(
             serializer.data,
             status=status.HTTP_201_CREATED)
@@ -115,10 +130,6 @@ class FavoriteViewSet(APIView):
         favorite_obj = get_object_or_404(
             FavorRecipes, author=user, recipes=recipe
         )
-        if not favorite_obj:
-            return Response(
-                'The recipe has not been favorited',
-                status=status.HTTP_400_BAD_REQUEST)
         favorite_obj.delete()
         return Response(
             'Removed', status=status.HTTP_204_NO_CONTENT)
@@ -177,21 +188,23 @@ class FollowViewSet(APIView):
 
     def get(self, request, author_id):
         user = request.user
-        author = get_object_or_404(User, id=author_id)
-        if Follow.objects.filter(user=user, author=author).exists():
-            return Response(
-                'Subscribed',
-                status=status.HTTP_400_BAD_REQUEST)
-        Follow.objects.create(user=user, author=author)
-        serializer = UserSerializer(author)
+        data = {
+            'user': user.id,
+            'author': author_id
+        }
+        serializer = FollowSerializer(data=data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def delete(self, request, author_id):
         user = request.user
         author = get_object_or_404(User, id=author_id)
-        follow = get_object_or_404(Follow, user=user, author=author)
+        follow = get_object_or_404(
+            Follow, user_id=user.id, author_id=author_id
+        )
         follow.delete()
-        return Response('Unsubscribed',
+        return Response('Вы успешно отписаны',
                         status=status.HTTP_204_NO_CONTENT)
 
 class FollowReadViewSet(ListAPIView):
@@ -201,7 +214,6 @@ class FollowReadViewSet(ListAPIView):
 
     def get_queryset(self):
         return User.objects.filter(following__user=self.request.user)
-
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
