@@ -1,9 +1,13 @@
-from api.models import Follow
-from users.models import User
 from rest_framework import serializers
+from users.models import User
+
+from api.models import Follow
 
 
 class UserSerializerCom(serializers.ModelSerializer):
+    """
+    Модель пользвователя, используемая в настройках Djoser для отоброжения
+    """
     is_subscribed = serializers.SerializerMethodField('get_is_subscribed')
 
     class Meta:

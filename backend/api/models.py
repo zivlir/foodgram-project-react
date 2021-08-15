@@ -1,7 +1,8 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Exists, OuterRef, Value
-from django.core.exceptions import ValidationError
 from users.models import User
+
 
 class Ingredient(models.Model):
     name = models.CharField(
@@ -134,6 +135,7 @@ class Follow(models.Model):
         related_name='following',
         verbose_name='Подписки'
     )
+
     def clean(self):
         if self.user == self.author:
             raise ValidationError(
@@ -141,8 +143,8 @@ class Follow(models.Model):
             )
 
     class Meta:
-        verbose_name = 'Избранное'
-        verbose_name_plural = 'Список избранного'
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
         unique_together = ['user', 'author']
         constraints = [
             models.UniqueConstraint(
@@ -167,8 +169,8 @@ class ShoppingList(models.Model):
     )
 
     class Meta:
-        verbose_name='Рецепт в корзине'
-        verbose_name_plural='Рецепты в корзине'
+        verbose_name = 'Рецепт в корзине'
+        verbose_name_plural = 'Рецепты в корзине'
         constraints = [
             models.UniqueConstraint(
                 fields=['author', 'recipe'],
@@ -178,7 +180,6 @@ class ShoppingList(models.Model):
 
     def __str__(self):
         return f'{self.recipe} в избранном у {self.author}'
-
 
 
 class FavorRecipes(models.Model):

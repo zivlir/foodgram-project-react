@@ -16,12 +16,10 @@ class RecipeFilter(filters.FilterSet):
         field_name='tags__slug'
     )
 
-
     class Meta:
         model = Recipe
-        fields = ['author', 'tags',]
+        fields = ['author', 'tags', ]
 
 
 class IngredientFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='istartswith')
-

@@ -4,10 +4,6 @@ from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
                         RecipeComponent, Tag, User)
 
 
-class UserAdmin(admin.ModelAdmin):
-    list_display = ('username', 'email')
-
-
 class RecipeComponentAdmin(admin.TabularInline):
     model = Recipe.ingredients.through
     extra = 2
@@ -16,7 +12,8 @@ class RecipeComponentAdmin(admin.TabularInline):
 class RecipeAdmin(admin.ModelAdmin):
     inlines = (RecipeComponentAdmin,)
     list_display = ('pk', 'name', 'author')
-    search_fields = ('author', '')
+    list_display_links = ('name', )
+    search_fields = ('author', 'name')
 
 
 class TagAdmin(admin.ModelAdmin):
@@ -35,7 +32,6 @@ class FavorAdmin(admin.ModelAdmin):
     list_display = ('author', 'recipes')
 
 
-admin.site.register(User, UserAdmin)
 admin.site.register(Recipe, RecipeAdmin)
 admin.site.register(Tag, TagAdmin)
 admin.site.register(Ingredient, IngridientAdmin)

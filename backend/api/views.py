@@ -1,38 +1,22 @@
-from django.db.models import Exists, OuterRef, Value
+from django.db.models import Exists, F, OuterRef
+from django.http import HttpResponse
 from djoser import views
-from rest_framework import filters, mixins, status, viewsets, generics
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework import mixins, status, viewsets
 from rest_framework.generics import ListAPIView, get_object_or_404
-from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet
-
-from api.filters import RecipeFilter, IngredientFilter
-from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
-                        RecipeComponent, ShoppingList, Tag)
 from users.models import User
-from api.permissions import IsOwnerOrReadOnly
-from api.serializers import (
-    FavorSerializer, FollowReadSerializer, IngredientSerializer,
-    FollowerReadSerializer, FollowSerializer,
-    ListSubscriptionsSerializer, RecipeReadSerializer,
-    RecipeWriteSerializer, ShoppingSerializer,
-    TagSerializer, UserSerializer
-)
 from users.serializers import UserSerializer
 
-class GetPostViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
-                     mixins.RetrieveModelMixin, viewsets.GenericViewSet):
-    pass
-
-
-class GetPostDelViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
-                        mixins.RetrieveModelMixin, mixins.DestroyModelMixin,
-                        viewsets.GenericViewSet):
-    pass
-
+from api.filters import IngredientFilter, RecipeFilter
+from api.models import (FavorRecipes, Follow, Ingredient, Recipe,
+                        RecipeComponent, ShoppingList, Tag)
+from api.permissions import IsOwnerOrReadOnly
+from api.serializers import (FavorSerializer, FollowReadSerializer,
+                             FollowSerializer, IngredientSerializer,
+                             RecipeReadSerializer, RecipeWriteSerializer,
+                             ShoppingSerializer, TagSerializer)
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
@@ -67,7 +51,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if _in_shopping_cart == 'true':
             queryset = queryset.filter(is_in_shopping_list=True)
         elif _in_shopping_cart == 'false':
-            queryset = queryset.exclude(is_in_shopping_list=True)
+            queryset = queryset.exclude(is_in_shopping_list=False)
         return queryset
 
     def create(self, request, *args, **kwargs):
@@ -106,10 +90,6 @@ class FavoriteViewSet(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = FavorSerializer
 
-    # def perform_create(self, recipe_id):
-    #     recipe = get_object_or_404(Recipe, id=self.kwargs['recipe_id'])
-    #     serializer.save(author=self.request.user, recipe=recipe)
-
     def get(self, request, recipe_id):
         user = request.user
         recipe = get_object_or_404(Recipe, id=recipe_id)
@@ -147,13 +127,18 @@ class ShoppingViewSet(APIView):
     serializer_class = ShoppingSerializer
 
     def get(self, request, recipe_id):
-        user = request.user
+        author = request.user.id
         recipe = get_object_or_404(Recipe, id=recipe_id)
-        ShoppingList.objects.create(user=user, recipe=recipe)
-        serializer = FavorSerializer(recipe)
-        return Response(
-            serializer.data,
-            status=status.HTTP_201_CREATED)
+        data = {
+            'author': author,
+            'recipe': recipe.id
+        }
+        serializer = ShoppingSerializer(
+            data=data, context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def delete(self, request, recipe_id):
         user = request.user
@@ -171,18 +156,6 @@ class AuthorViewSet(views.UserViewSet):
     permission_classes = [IsAuthenticated]
 
 
-# @api_view(http_method_names=['GET', ])
-# @permission_classes([IsAuthenticated])
-# def FollowListView(request):
-#     user = User.objects.filter(following__user=request.user)
-#     paginator = PageNumberPagination()
-#     paginator.page_size = 10  # change to PAGE_SIZE
-#     response = paginator.paginate_queryset(user, request)
-#     serializer = ListSubscriptionsSerializer(
-#         response, many=True, context={'current_user': request.user}
-#     )
-#     return paginator.get_paginated_response(serializer.data)
-
 class FollowViewSet(APIView):
     permission_classes = (IsAuthenticated, )
 
@@ -199,13 +172,13 @@ class FollowViewSet(APIView):
 
     def delete(self, request, author_id):
         user = request.user
-        author = get_object_or_404(User, id=author_id)
         follow = get_object_or_404(
             Follow, user_id=user.id, author_id=author_id
         )
         follow.delete()
         return Response('Вы успешно отписаны',
                         status=status.HTTP_204_NO_CONTENT)
+
 
 class FollowReadViewSet(ListAPIView):
     queryset = User.objects.all()
@@ -219,3 +192,41 @@ class FollowReadViewSet(ListAPIView):
         context = super().get_serializer_context()
         context.update({'request': self.request})
         return context
+
+
+class ShoppingCartDL(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        shop_list = {}
+        cart = ShoppingList.objects.select_related('recipe').annotate(
+            ingredients=F('recipe__ingredients')
+        )
+        for record in cart:
+            recipe = record.recipe
+            ingredients = RecipeComponent.objects.filter(recipe=recipe)
+            for ingredient in ingredients:
+                amt = ingredient.amount
+                name = ingredient.ingredient.name
+                units = ingredient.ingredient.units
+                if name not in shop_list:
+                    shop_list[name] = {
+                        'measurement_unit': units,
+                        'amount': amt
+                    }
+                else:
+                    shop_list[name]['amount'] = (
+                                shop_list[name]['amount'] +
+                                amt)
+        wishlist = []
+        for item in shop_list:
+            wishlist.append(
+                f'{item} - {shop_list[item]["amount"]} '
+                f'{shop_list[item]["measurement_unit"]} \n'
+            )
+        wishlist.append('\n')
+        wishlist.append('FoodGram, 2021')
+        response = HttpResponse(wishlist, 'Content-Type: text/plain')
+        response['Content-Disposition'] = 'attachment; filename="wishlist.txt"'
+        return response
