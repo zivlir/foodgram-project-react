@@ -1,7 +1,6 @@
-from django.db.models import Exists, F, OuterRef
 from django.http import HttpResponse
 from djoser import views
-from rest_framework import mixins, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.generics import ListAPIView, get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -22,37 +21,16 @@ from api.serializers import (FavorSerializer, FollowReadSerializer,
 class RecipeViewSet(viewsets.ModelViewSet):
     filter_class = RecipeFilter
     permission_classes = [IsOwnerOrReadOnly, ]
+    queryset = Recipe.objects.prefetch_related(
+        'ingredients', 'author', 'tags'
+    )
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Recipe.objects.all()
-        if user.is_anonymous:
+        queryset = super(RecipeViewSet, self).get_queryset()
+        if user.is_anonymous or user is None:
             return queryset
-        else:
-            queryset = queryset.annotate(
-            is_favorited=Exists(FavorRecipes.objects.filter(
-                author=user, recipes_id=OuterRef('pk')
-            )),
-            is_in_shopping_list=Exists(ShoppingList.objects.filter(
-                author=user, recipe_id=OuterRef('pk')
-            ))
-        )
-        _favorited = self.request.query_params.get('is_favorited')
-        _in_shopping_cart = self.request.query_params.get(
-            'is_in_shopping_cart'
-        )
-
-        # Обрабатываем запрос как строки, чтобы не начать фильтрацию при
-        # отсутствии параметра
-        if _favorited == 'true':
-            queryset = queryset.filter(is_favorited=True)
-        elif _favorited == 'false':
-            queryset = queryset.filter(is_favorited=False)
-        if _in_shopping_cart == 'true':
-            queryset = queryset.filter(is_in_shopping_list=True)
-        elif _in_shopping_cart == 'false':
-            queryset = queryset.exclude(is_in_shopping_list=False)
-        return queryset
+        return queryset.opt_annotations(user)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -64,7 +42,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         return serializer.save(author=self.request.user)
-
 
     def get_serializer_class(self):
         if self.request.method in ['GET', ]:
@@ -198,32 +175,32 @@ class ShoppingCartDL(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        """
+        К сожалению, полное извлечение данных с помощью аннотаций и F() не
+        осилил, но количество запросов уменьшили
+        """
         user = request.user
-        shop_list = {}
-        cart = ShoppingList.objects.select_related('recipe').annotate(
-            ingredients=F('recipe__ingredients')
+        ingredts = RecipeComponent.objects.filter(
+            recipe__author__author__author=user
         )
-        for record in cart:
-            recipe = record.recipe
-            ingredients = RecipeComponent.objects.filter(recipe=recipe)
-            for ingredient in ingredients:
-                amt = ingredient.amount
-                name = ingredient.ingredient.name
-                units = ingredient.ingredient.units
-                if name not in shop_list:
-                    shop_list[name] = {
-                        'measurement_unit': units,
-                        'amount': amt
-                    }
-                else:
-                    shop_list[name]['amount'] = (
-                                shop_list[name]['amount'] +
-                                amt)
+        shop_list = {}
+        for ingredient in ingredts:
+            amount = ingredient.amount
+            name = ingredient.ingredient.name
+            unit = ingredient.ingredient.units
+            if name not in shop_list:
+                shop_list[name] = {
+                    'unit': unit,
+                    'amount': amount
+                }
+            else:
+                shop_list[name]['amount'] += amount
         wishlist = []
         for item in shop_list:
+            # Без двойных кавычек тут сложновато обойтись
             wishlist.append(
                 f'{item} - {shop_list[item]["amount"]} '
-                f'{shop_list[item]["measurement_unit"]} \n'
+                f'{shop_list[item]["unit"]} \n'
             )
         wishlist.append('\n')
         wishlist.append('FoodGram, 2021')

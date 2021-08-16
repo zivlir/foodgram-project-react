@@ -24,7 +24,6 @@ class UserSerializerCom(serializers.ModelSerializer):
         ).exists()
 
 
-
 class UserSerializer(serializers.ModelSerializer):
 
     class Meta:

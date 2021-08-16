@@ -10,11 +10,19 @@ FILTER_CHOICES = (
 
 class RecipeFilter(filters.FilterSet):
     """
-    Перенесли фильтрацию во вьюсет, оставив только тэги
+    Фильтры работают по пред-извлеченным значениям is_favorited и т.д.
     """
     tags = filters.AllValuesMultipleFilter(
         field_name='tags__slug'
     )
+    is_favorited = filters.BooleanFilter(method='fav_filter')
+    is_in_shopping_cart = filters.BooleanFilter(method='shop_filter')
+
+    def fav_filter(self, queryset, name, value):
+        return queryset.filter(is_favorited=value)
+
+    def shop_filter(self, queryset, name, value):
+        return queryset.filter(is_in_shopping_cart=value)
 
     class Meta:
         model = Recipe

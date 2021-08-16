@@ -9,7 +9,6 @@ v1_router = SimpleRouter()
 v1_router.register('ingredients', IngredientViewSet, basename='ingredients')
 v1_router.register('recipes', RecipeViewSet, basename='recipes')
 v1_router.register('tags', TagViewSet, basename='tags')
-# TODO: переделать users в общий viewset(?)
 
 
 urlpatterns = [

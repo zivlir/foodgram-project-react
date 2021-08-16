@@ -1,7 +1,42 @@
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Exists, OuterRef, Value
+from django.db.models import Exists, OuterRef, Sum, Value
 from users.models import User
+
+
+class IngredientQuerySet(models.QuerySet):
+    """
+    Менеджер для автоматического аннотирования рецепта в представлении списков
+    покупок
+    """
+    def shopping_cart(self, user):
+        return self.filter(recipe__shop_list__author=user).annotate(
+            amount=Sum('recipe_ingredient__amount')
+        ).select_related('units')
+
+
+class RecipeQuerySet(models.QuerySet):
+    """
+    Выделенный QS с дополнительными аннотированными полями
+    """
+    def opt_annotations(self, user):
+        if user.is_anonymous:
+            return self.annotate(
+                is_favorited=Value(
+                    False, output_field=models.BooleanField()
+                ),
+                is_in_shopping_cart=Value(
+                    False, output_field=models.BooleanField()
+                )
+            )
+        return self.annotate(
+            is_favorited=Exists(FavorRecipes.objects.filter(
+                author=user, recipes_id=OuterRef('pk')
+            )),
+            is_in_shopping_cart=Exists(ShoppingList.objects.filter(
+                author=user, recipe_id=OuterRef('pk')
+            ))
+        )
 
 
 class Ingredient(models.Model):
@@ -13,6 +48,8 @@ class Ingredient(models.Model):
         max_length=16,
         verbose_name='Единица измерения'
     )
+
+    objects = IngredientQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'Ингидиент'
@@ -44,30 +81,6 @@ class Tag(models.Model):
 
     def __str__(self):
         return self.slug
-
-
-class RecipeQuerySet(models.QuerySet):
-    """
-    Выделенный QS с дополнительными аннотированными полями
-    """
-    def opt_annotations(self, user):
-        if user.is_anonymous:
-            return self.annotate(
-                is_favorited=Value(
-                    False, output_field=models.BooleanField()
-                ),
-                is_in_shopping_cart=Value(
-                    False, output_field=models.BooleanField()
-                )
-            )
-        return self.annotate(
-            is_favorited=Exists(FavorRecipes.objects.filter(
-                author=user, recipes_id=OuterRef('pk')
-            )),
-            is_in_shopping_list=Exists(ShoppingList.objects.filter(
-                author=user, recipe_id=OuterRef('pk')
-            ))
-        )
 
 
 class Recipe(models.Model):
@@ -105,7 +118,12 @@ class Recipe(models.Model):
         verbose_name='Дата создания'
     )
 
+    objects = RecipeQuerySet.as_manager()
+
     def clean(self):
+        """
+        Проверка допустимых значений на уровне модели
+        """
         if self.ingredients.count() < 1:
             raise ValidationError('Список ингридиентов не может быть пуст!')
         if self.cooking_time < 1:

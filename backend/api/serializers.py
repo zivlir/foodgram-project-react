@@ -1,6 +1,5 @@
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
-from rest_framework.validators import UniqueTogetherValidator
 from users.models import User
 from users.serializers import UserSerializer
 
@@ -46,6 +45,28 @@ class IngredientSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class IngredientReadSerializer(serializers.ModelSerializer):
+    id = serializers.SlugRelatedField(
+        source='ingredient',
+        slug_field='id',
+        queryset=Ingredient.objects.all()
+    )
+    name = serializers.SlugRelatedField(
+        source='ingredient',
+        slug_field='name',
+        read_only=True
+    )
+    measurement_unit = serializers.SlugRelatedField(
+        source='ingredient.units',
+        slug_field='name',
+        read_only=True
+    )
+
+    class Meta:
+        model = RecipeComponent
+        fields = ('id', 'name', 'measurement_unit', 'amount')
+
+
 class IngredientWriteSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField()
     amount = serializers.IntegerField()
@@ -59,7 +80,7 @@ class TagSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tag
-        fields = ('id', 'name', 'color', 'slug')
+        fields = ('name', 'color', 'slug')
 
 
 class RecipeComponentSerializer(serializers.ModelSerializer):
@@ -103,8 +124,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         for ingredient in ingredients:
             if int(ingredient['amount']) <= 0:
                 raise serializers.ValidationError(
-                    {'ingredients':
-                         'Поле amount не может быть отрицательным!'}
+                    {'ingredients': 'Поле amount не может быть отрицательным'}
                 )
         return attrs
 
@@ -159,42 +179,18 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
 class RecipeReadSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     author = UserSerializer(read_only=True)
+
+    is_favorited = serializers.BooleanField(read_only=True)
+    is_in_shopping_cart = serializers.BooleanField(read_only=True)
     ingredients = serializers.SerializerMethodField('get_ingredients')
-    is_favorited = serializers.SerializerMethodField('get_is_favorited')
-    is_in_shopping_cart = serializers.SerializerMethodField(
-        'get_is_in_shopping_cart'
-    )
 
     class Meta:
         model = Recipe
-        fields = ('__all__')
+        fields = '__all__'
 
     def get_ingredients(self, recipe):
         queryset = RecipeComponent.objects.filter(recipe=recipe)
         return RecipeComponentSerializer(queryset, many=True).data
-
-    def get_is_in_shopping_cart(self, recipe):
-        request = self.context.get('request')
-        user = request.user
-        if request is None or user.is_anonymous:
-            return False
-        else:
-            return ShoppingList.objects.filter(
-                author=user, recipe=recipe
-            ).exists()
-
-    def get_is_favorited(self, recipe):
-        request = self.context.get('request')
-        user = request.user
-        if request is None or user.is_anonymous:
-            return False
-        else:
-            return FavorRecipes.objects.filter(
-                author=user, recipes=recipe
-            ).exists()
-
-
-
 
 
 class FollowReadSerializer(serializers.ModelSerializer):
@@ -218,7 +214,6 @@ class FollowReadSerializer(serializers.ModelSerializer):
 
     def get_is_subscribed(self, user):
         author = self.context.get('current_user')
-        author_follows = user.following.all()
         if Follow.objects.filter(user=user, author=author).exists():
             return True
         return False
@@ -229,10 +224,7 @@ class ShoppingSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShoppingList
         fields = '__all__'
-    # author = serializers.SlugRelatedField(
-    #     slug_field='username',
-    #     read_only=True
-    # )
+
     def validate(self, attrs):
         author = self.context.get('request').user
         recipe = attrs['recipe']
@@ -245,7 +237,6 @@ class ShoppingSerializer(serializers.ModelSerializer):
                 'Рецепт уже в корзине'
             )
         return attrs
-
 
 
 class FavorSerializer(serializers.ModelSerializer):
