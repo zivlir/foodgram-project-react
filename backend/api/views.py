@@ -195,14 +195,11 @@ class ShoppingCartDL(APIView):
                 }
             else:
                 shop_list[name]['amount'] += amount
-        wishlist = []
-        for item in shop_list:
-            # Без двойных кавычек тут сложновато обойтись
-            wishlist.append(
-                f'{item} - {shop_list[item]["amount"]} '
-                f'{shop_list[item]["unit"]} \n'
-            )
-        wishlist.append('\n')
+        # Comprehansion применил, но без двойных кавычек тут
+        # сложновато обойтись
+        wishlist = [f'{item} - {shop_list[item]["amount"]} '
+                f'{shop_list[item]["unit"]} \r\n' for item in shop_list]
+        wishlist.append('\r\n')
         wishlist.append('FoodGram, 2021')
         response = HttpResponse(wishlist, 'Content-Type: text/plain')
         response['Content-Disposition'] = 'attachment; filename="wishlist.txt"'
