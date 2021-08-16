@@ -1,5 +1,9 @@
 FROM python:3.8.5-slim
 
+LABEL author="andyi95"
+LABEL maintainer="Andrey Chernikov"
+LABEL release-date="2021-08-16"
+
 WORKDIR /code
 
 COPY requirements.txt requirements.txt
