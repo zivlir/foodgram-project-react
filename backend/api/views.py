@@ -183,6 +183,8 @@ class ShoppingCartDL(APIView):
         ingredts = RecipeComponent.objects.filter(
             recipe__author__author__author=user
         )
+        ingredts = Ingredient.objects.shopping_cart(user)
+
         shop_list = {}
         for ingredient in ingredts:
             amount = ingredient.amount
