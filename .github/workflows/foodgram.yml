@@ -19,7 +19,7 @@ jobs:
         pip install -r ./backend/requirements.txt
     - name: Test for PEP8 requirements
       run: |
-        python -m flake8 ./backend/
+        python -m flake8 ./backend/ --config ./backend/tox.ini
       env:
         DB_ENGINE: ${{ secrets.DB_ENGINE }}
         DB_NAME: ${{ secrets.DB_NAME }}
