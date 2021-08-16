@@ -121,7 +121,7 @@ class ShoppingViewSet(APIView):
         user = request.user
         recipe = get_object_or_404(Recipe, id=recipe_id)
         shopping_list_obj = get_object_or_404(
-            ShoppingList, user=user, recipe=recipe)
+            ShoppingList, author=user, recipe=recipe)
         shopping_list_obj.delete()
         return Response(
             'Deleted', status=status.HTTP_204_NO_CONTENT)
