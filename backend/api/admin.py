@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from api.models import (FavorRecipes, Follow, Ingredient, Recipe, Tag)
+from api.models import FavorRecipes, Follow, Ingredient, Recipe, Tag
 
 
 class RecipeComponentAdmin(admin.TabularInline):

@@ -200,7 +200,7 @@ class ShoppingCartDL(APIView):
         # Comprehansion применил, но без двойных кавычек тут
         # сложновато обойтись
         wishlist = [f'{item} - {shop_list[item]["amount"]} '
-                f'{shop_list[item]["unit"]} \r\n' for item in shop_list]
+                    f'{shop_list[item]["unit"]} \r\n' for item in shop_list]
         wishlist.append('\r\n')
         wishlist.append('FoodGram, 2021')
         response = HttpResponse(wishlist, 'Content-Type: text/plain')
